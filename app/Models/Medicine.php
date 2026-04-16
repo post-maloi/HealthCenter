@@ -6,12 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Medicine extends Model
 {
-   protected $fillable = ['name', 'batch_number', 'stock', 'expiration_date'];
+    // Fillable allows these fields to be saved via the Controller
+    protected $fillable = [
+        'name', 
+        'batch_number', 
+        'stock', 
+        'expiration_date', 
+        'arrival_date'
+    ];
 
-// This helps Laravel treat the date correctly for sorting
-protected $casts = [
-    'expiration_date' => 'date',
-];
-
-   
+    // Casting ensures Laravel treats these as Carbon date objects 
+    // This is required for the ->format('M d, Y') function to work in your view
+    protected $casts = [
+        'expiration_date' => 'date',
+        'arrival_date' => 'date',
+    ];
 }

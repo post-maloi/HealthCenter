@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
 // 1. Root Route - Smart Redirect
-// This prevents the "POST /" error if you're already logged in
 Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -15,22 +14,22 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// 2. GUEST ROUTES (Accessible when NOT logged in)
+// 2. GUEST ROUTES
 Route::middleware('guest')->group(function () {
-    // Login
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
-
-    // Registration
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
 });
 
-// 3. AUTH ROUTES (Accessible ONLY when logged in)
+// 3. AUTH ROUTES
 Route::middleware('auth')->group(function () {
     
     // Dashboard
     Route::get('/dashboard', [ClinicRecordController::class, 'dashboard'])->name('dashboard');
+    
+    // Medicines - Custom Group Delete (Must be above resource)
+    Route::delete('/medicines/destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group');
     
     // Resources
     Route::resource('record', ClinicRecordController::class);

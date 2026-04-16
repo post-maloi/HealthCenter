@@ -7,10 +7,14 @@ use Illuminate\Http\Request;
 
 class MedicineController extends Controller
 {
+    /**
+     * Display the main inventory list.
+     */
     public function index() 
     {
-        // Keep index sorted by expiration for visibility (FEFO)
-        $medicines = Medicine::orderBy('expiration_date', 'asc')->get();
+        // Now sorting by the custom arrival_date so backdated stock 
+        // appears in the correct chronological order.
+        $medicines = Medicine::orderBy('arrival_date', 'desc')->get();
         return view('medicines.index', ['medicines' => $medicines]);
     }
 
@@ -19,6 +23,9 @@ class MedicineController extends Controller
         return view('medicines.create'); 
     }
 
+    /**
+     * Store a new medicine batch/lot.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -26,6 +33,8 @@ class MedicineController extends Controller
             'batch_number' => 'nullable|string|max:100',
             'stock' => 'required|integer|min:0',
             'expiration_date' => 'required|date',
+            // Changed from created_at to arrival_date
+            'arrival_date' => 'required|date', 
         ]);
 
         Medicine::create($validated);
@@ -34,50 +43,14 @@ class MedicineController extends Controller
             ->with('success', 'New batch added successfully!');
     }
 
-    /**
-     * Deduct stock from the latest batch first (LIFO)
-     * You can call this method from your ClinicRecordController 
-     * when a medicine is prescribed/given.
-     */
-    public function autoDeduct(Request $request)
-    {
-        $medicineName = $request->medicine_name;
-        $amountToDeduct = $request->quantity;
-
-        // 1. Get all batches of this medicine, newest first (LIFO)
-        $batches = Medicine::where('name', $medicineName)
-            ->where('stock', '>', 0)
-            ->orderBy('created_at', 'desc') // This ensures newest deducts first
-            ->get();
-
-        $remainingToDeduct = $amountToDeduct;
-
-        foreach ($batches as $batch) {
-            if ($remainingToDeduct <= 0) break;
-
-            if ($batch->stock >= $remainingToDeduct) {
-                // Current batch has enough for the whole request
-                $batch->decrement('stock', $remainingToDeduct);
-                $remainingToDeduct = 0;
-            } else {
-                // Batch doesn't have enough; empty this batch and move to next
-                $remainingToDeduct -= $batch->stock;
-                $batch->update(['stock' => 0]);
-            }
-        }
-
-        if ($remainingToDeduct > 0) {
-            return back()->with('error', "Not enough total stock. Missing: $remainingToDeduct units.");
-        }
-
-        return back()->with('success', 'Stock deducted starting from the latest batch.');
-    }
-
     public function edit(Medicine $medicine)
     {
         return view('medicines.edit', ['medicine' => $medicine]);
     }
 
+    /**
+     * Update the specified medicine batch.
+     */
     public function update(Request $request, Medicine $medicine)
     {
         $validated = $request->validate([
@@ -85,6 +58,8 @@ class MedicineController extends Controller
             'batch_number' => 'nullable|string|max:100',
             'stock' => 'required|integer|min:0',
             'expiration_date' => 'required|date',
+            // Ensure the update also handles the custom arrival date
+            'arrival_date' => 'required|date',
         ]);
 
         $medicine->update($validated);
@@ -93,10 +68,25 @@ class MedicineController extends Controller
             ->with('success', 'Medicine updated successfully!');
     }
 
+    /**
+     * Remove a specific single lot/batch.
+     */
     public function destroy(Medicine $medicine)
     {
         $medicine->delete();
         return redirect()->route('medicines.index')
-            ->with('success', 'Medicine removed from inventory.');
+            ->with('success', 'Specific batch removed.');
+    }
+
+    /**
+     * Remove ALL batches/lots belonging to a specific medicine name.
+     */
+    public function destroyGroup(Request $request)
+    {
+        // Deletes the entire medicine category (e.g., all Paracetamol lots)
+        Medicine::where('name', $request->name)->delete();
+        
+        return redirect()->route('medicines.index')
+            ->with('success', 'All records for ' . $request->name . ' have been deleted.');
     }
 }
