@@ -12,64 +12,37 @@ use Illuminate\Support\Facades\DB;
 
 class ClinicRecordController extends Controller
 {
-    public function index(Request $request): View
-    {
-        $search = $request->input('search');
-        $ageGroup = $request->input('age_group');
+   public function index(Request $request)
+{
+    $search = $request->get('search');
 
-        // Group records by patient_name and get the latest ID for unique history rows
-        $latestRecordIds = ClinicRecord::selectRaw('MAX(id) as id')
-            ->groupBy('patient_name')
-            ->pluck('id');
+    $records = ClinicRecord::whereIn('id', function ($query) use ($search) {
+        $query->select(DB::raw('MAX(id)'))
+            ->from('clinic_records')
+            ->groupBy('first_name', 'middle_name', 'last_name', 'birthday');
 
-        $query = ClinicRecord::whereIn('id', $latestRecordIds)
-            ->orderBy('consultation_date', 'desc');
-
-        // Multi-Column Search
-        if ($request->filled('search')) {
+        if ($search) {
             $query->where(function($q) use ($search) {
-                $q->where('patient_name', 'like', "%{$search}%")
-                  ->orWhere('diagnosis', 'like', "%{$search}%")
-                  ->orWhere('age', 'like', "%{$search}%")
-                  ->orWhere('medicines_given', 'like', "%{$search}%");
+                // We search individual name columns since 'patient_name' doesn't exist in the DB
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('middle_name', 'like', "%{$search}%");
             });
         }
+    })
+    ->orderBy('consultation_date', 'desc')
+    ->get();
 
-        // Age Group Filtering logic
-        if ($request->filled('age_group')) {
-            $today = now();
-            if ($ageGroup == 'infant') {
-                $query->where('birthday', '>=', $today->copy()->subMonths(11));
-            } elseif ($ageGroup == 'child') {
-                $query->whereBetween('birthday', [
-                    $today->copy()->subMonths(59), 
-                    $today->copy()->subMonths(12)
-                ]);
-            } elseif ($ageGroup == 'senior') {
-                $query->where('birthday', '<=', $today->copy()->subYears(60));
-            }
-        }
+    $allMedicines = Medicine::where('stock', '>', 0)->get();
 
-        $records = $query->get();
-
-        return view('record.index', [
-            'records'   => $records,
-            'search'    => $search,
-            'age_group' => $ageGroup
-        ]);
-    }
-
-    public function create(): View
+    return view('record.index', [
+        'records' => $records,
+        'allMedicines' => $allMedicines
+    ]);
+}
+    public function create()
     {
-        /**
-         * UPDATED: FEFO (First Expiry, First Out) Logic
-         * We sort by expiration_date first so that unique() picks the batch 
-         * expiring soonest (the "Priority" batch).
-         */
-        $allMedicines = Medicine::where('stock', '>', 0)
-            ->orderBy('expiration_date', 'asc') 
-            ->get()
-            ->unique('name'); // Removes duplicates from the dropdown
+        $allMedicines = Medicine::where('stock', '>', 0)->get();
 
         return view('record.create', [
             'allMedicines' => $allMedicines
@@ -79,57 +52,65 @@ class ClinicRecordController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'patient_name'      => 'required|string|max:255',
+            'first_name'        => 'nullable|string|max:255',
+            'middle_name'       => 'nullable|string|max:255',
+            'last_name'         => 'nullable|string|max:255',
+            'patient_name'      => 'nullable|string|max:255',
             'consultation_date' => 'required|date',
             'birthday'          => 'required|date',
             'gender'            => 'required|string',
+            'civil_status'      => 'required|string',
+            'contact_number'    => 'nullable|string',
+            'address_purok'     => 'required|string',
             'diagnosis'         => 'nullable|string',
-            'medicines'         => 'nullable|array', 
+            'medicines'         => 'nullable|array',
         ]);
 
-        $validated['patient_name'] = trim($request->patient_name);
+        if (!$request->patient_name) {
+            $middle = $request->middle_name ? " {$request->middle_name} " : " ";
+            $validated['patient_name'] = trim("{$request->first_name}{$middle}{$request->last_name}");
+        } else {
+            $validated['patient_name'] = $request->patient_name;
+        }
 
-        DB::transaction(function () use ($request, $validated) {
+        DB::transaction(function () use ($request, &$validated) {
             $medicineDescriptions = [];
 
             if ($request->has('medicines')) {
                 foreach ($request->medicines as $item) {
-                    $medicine = Medicine::find($item['id']);
-                    $qty = $item['quantity'];
+                    if (isset($item['id']) && isset($item['quantity'])) {
+                        $medicine = Medicine::find($item['id']);
+                        $qty = $item['quantity'];
 
-                    if ($medicine && $medicine->stock >= $qty) {
-                        $medicine->decrement('stock', $qty);
-                        $medicineDescriptions[] = "{$medicine->name} (x{$qty})";
+                        if ($medicine && $medicine->stock >= $qty) {
+                            $medicine->decrement('stock', $qty);
+                            $medicineDescriptions[] = "{$medicine->name} (x{$qty})";
+                        }
                     }
                 }
             }
 
             $validated['medicines_given'] = implode(', ', $medicineDescriptions);
 
-            /**
-             * UPDATED: Age Format Sync
-             * Calculates age in months for infants (0-11) to match your 
-             * table display and filtering needs.
-             */
+            // Calculation fix: ensure age is stored as a clean whole number
             $birth = Carbon::parse($request->birthday);
-            $now = Carbon::now();
-            $diff = $birth->diff($now);
-
-            if ($diff->y === 0) {
-                $validated['age'] = $diff->m . ' Mon';
-            } else {
-                $validated['age'] = $diff->y . ' yrs';
-            }
+            $diff = $birth->diff(Carbon::now());
+            $validated['age'] = ($diff->y === 0) ? $diff->m . ' Mon' : $diff->y . ' yrs';
 
             ClinicRecord::create($validated);
         });
 
-        return redirect()->route('record.index')->with('success', 'Record saved and stock updated!');
+        return redirect()->route('record.index')->with('success', 'Record saved successfully!');
     }
 
-    public function show(ClinicRecord $record): View
+    public function show(ClinicRecord $record)
     {
-        $history = ClinicRecord::where('patient_name', $record->patient_name)
+        // history filters by Name, Birthday, and Contact to keep patients unique
+        $history = ClinicRecord::where('first_name', $record->first_name)
+            ->where('middle_name', $record->middle_name)
+            ->where('last_name', $record->last_name)
+            ->where('birthday', $record->birthday) 
+            ->where('contact_number', $record->contact_number)
             ->orderBy('consultation_date', 'desc')
             ->get();
 
@@ -148,5 +129,49 @@ class ClinicRecordController extends Controller
             'totalPatients' => $totalPatients,
             'lowStock' => $lowStock
         ]);
+    }
+
+    public function quickStore(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'patient_name'      => 'required|string',
+            'consultation_date' => 'required|date',
+            'birthday'          => 'required|date',
+            'gender'            => 'required|string',
+            'civil_status'      => 'required|string',
+            'address_purok'     => 'required|string',
+            'contact_number'    => 'nullable|string',
+            'diagnosis'         => 'required|string',
+            'medicines'         => 'nullable|array', 
+        ]);
+
+        DB::transaction(function () use ($request, &$validated) {
+            $medicineDescriptions = [];
+
+            if ($request->has('medicines')) {
+                foreach ($request->medicines as $item) {
+                    if (isset($item['id']) && isset($item['quantity'])) {
+                        $medicine = Medicine::find($item['id']);
+                        $qty = $item['quantity'];
+
+                        if ($medicine && $medicine->stock >= $qty) {
+                            $medicine->decrement('stock', $qty);
+                            $medicineDescriptions[] = "{$medicine->name} (x{$qty})";
+                        }
+                    }
+                }
+            }
+
+            $validated['medicines_given'] = implode(', ', $medicineDescriptions);
+
+            // Storing age as whole number
+            $birth = Carbon::parse($request->birthday);
+            $diff = $birth->diff(Carbon::now());
+            $validated['age'] = ($diff->y === 0) ? $diff->m . ' Mon' : $diff->y . ' yrs';
+
+            ClinicRecord::create($validated);
+        });
+
+        return redirect()->route('record.index')->with('success', 'New consultation added for ' . $request->patient_name);
     }
 }

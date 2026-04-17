@@ -21,33 +21,63 @@
                 
                 <div class="p-8 border-b border-gray-100 flex justify-between items-start">
                     <div>
-                        <h2 class="text-3xl font-extrabold text-slate-800">{{ $record->patient_name }}</h2>
+                        {{-- FIXED: Using separate name columns instead of patient_name --}}
+                        <h2 class="text-3xl font-extrabold text-slate-800 capitalize">
+                            {{ $record->first_name }} {{ $record->middle_name }} {{ $record->last_name }}
+                        </h2>
                         <p class="text-blue-600 font-medium mt-1">Patient Clinical File</p>
                     </div>
                     <div class="text-right">
                         <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Consultation</span>
-                        <p class="text-lg font-semibold text-slate-700">{{ $record->consultation_date->format('M d, Y') }}</p>
+                        {{-- Added null check/parsing for safety --}}
+                        <p class="text-lg font-semibold text-slate-700">
+                            {{ \Carbon\Carbon::parse($record->consultation_date)->format('M d, Y') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-8 p-8 bg-slate-50/50 border-b border-gray-100">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Gender</label>
+                        <p class="text-slate-800 font-medium">{{ $record->gender }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Age</label>
+                        <p class="text-slate-800 font-medium">
+                            @php
+                                $birthday = \Carbon\Carbon::parse($record->birthday);
+                                $months = $birthday->diffInMonths(now());
+                                $years = $birthday->diffInYears(now());
+                            @endphp
+                            
+                            {{-- FIXED: Clean whole numbers for months or years --}}
+                            @if($months < 12)
+                                {{ (int)$months }} Months
+                            @else
+                                {{ (int)$years }} Yrs
+                            @endif
+                        </p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Birthday</label>
+                        <p class="text-slate-800 font-medium">
+                            {{ \Carbon\Carbon::parse($record->birthday)->format('F d, Y') }}
+                        </p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-8 p-8 bg-slate-50/50">
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Gender</label>
-                        <p class="text-slate-800 font-medium">{{ $record->gender }}</p>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Civil Status</label>
+                        <p class="text-slate-800 font-medium">{{ $record->civil_status ?? 'N/A' }}</p>
                     </div>
-                  <div>
-    <label class="block text-xs font-bold text-gray-400 uppercase">Age</label>
-    <p class="text-slate-800 font-medium">
-        @if($record->birthday->diffInMonths(now()) < 12)
-            {{ $record->birthday->diffInMonths(now()) }} Months
-        @else
-            {{ $record->age }} Years
-        @endif
-    </p>
-</div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Birthday</label>
-                        <p class="text-slate-800 font-medium">{{ $record->birthday->format('F d, Y') }}</p>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Contact Number</label>
+                        <p class="text-slate-800 font-medium">{{ $record->contact_number ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase">Purok / Address</label>
+                        <p class="text-slate-800 font-medium">{{ $record->address_purok ?? 'N/A' }}</p>
                     </div>
                 </div>
 
@@ -83,7 +113,9 @@
                         @foreach($history as $visit)
                             <div class="p-4 bg-white border rounded-xl shadow-sm flex justify-between items-center {{ $visit->id == $record->id ? 'ring-2 ring-blue-500' : '' }}">
                                 <div>
-                                    <p class="font-bold text-slate-700">{{ $visit->consultation_date->format('M d, Y') }}</p>
+                                    <p class="font-bold text-slate-700">
+                                        {{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}
+                                    </p>
                                     <p class="text-sm text-gray-500 truncate max-w-xs">Diagnosis: {{ $visit->diagnosis }}</p>
                                 </div>
                                 <div class="flex items-center gap-3">

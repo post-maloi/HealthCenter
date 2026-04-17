@@ -14,13 +14,20 @@ public function up(): void
 {
     Schema::create('clinic_records', function (Blueprint $table) {
         $table->id();
+        // Use separate name fields as requested
+        $table->string('first_name'); 
+        $table->string('middle_name')->nullable(); 
+        $table->string('last_name');
+        
         $table->date('consultation_date');
-        $table->string('patient_name');
-        $table->string('gender');
-        $table->integer('age');
         $table->date('birthday');
-        $table->text('diagnosis');
-        $table->text('medicines_given');
+        $table->string('gender');
+        $table->string('civil_status');   
+        $table->string('contact_number')->nullable(); 
+        $table->string('address_purok');  
+        $table->string('age'); // Keep as string to avoid the integer error
+        $table->text('diagnosis')->nullable();
+        $table->text('medicines_given')->nullable();
         $table->timestamps();
     });
 }

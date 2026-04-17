@@ -5,6 +5,18 @@ use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\AppointmentController;
+
+Route::prefix('record')->name('record.')->group(function () {
+    // This handles showing the consultation form with the medicine list
+    Route::get('/create', [AppointmentController::class, 'create'])->name('create');
+    
+    // This handles the form submission and inventory deduction
+    Route::post('/store', [AppointmentController::class, 'store'])->name('store');
+    
+    // Your existing index and show routes...
+    Route::get('/', [AppointmentController::class, 'index'])->name('index');
+});
 
 // 1. Root Route - Smart Redirect
 Route::get('/', function () {
@@ -37,4 +49,13 @@ Route::middleware('auth')->group(function () {
     
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-});
+
+    Route::post('/records/quick-add', [ClinicRecordController::class, 'quickStore'])->name('record.quickStore');
+// routes/web.php
+
+// Show the form with the medicine list
+Route::get('/appointment/create', [AppointmentController::class, 'create'])->name('appointment.create');
+
+// Process the form submission and deduct stock
+Route::post('/appointment/store', [AppointmentController::class, 'store'])->name('appointment.store');
+    });

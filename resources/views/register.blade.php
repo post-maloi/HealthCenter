@@ -10,22 +10,40 @@
 
         <form action="{{ route('register') }}" method="POST" class="space-y-5">
             @csrf
+            
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
-                <input type="text" name="name" required placeholder="John Doe"
-                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition">
+                <label class="block text-sm font-bold text-gray-700 mb-2">First Name</label>
+                <input type="text" name="first_name" value="{{ old('first_name') }}" required placeholder="John"
+                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition @error('first_name') border-red-500 @enderror">
+                @error('first_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Middle Name (Optional)</label>
+                <input type="text" name="middle_name" value="{{ old('middle_name') }}" placeholder="Umbac"
+                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition @error('middle_name') border-red-500 @enderror">
+                @error('middle_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
+                <input type="text" name="last_name" value="{{ old('last_name') }}" required placeholder="Doe"
+                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition @error('last_name') border-red-500 @enderror">
+                @error('last_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
-                <input type="email" name="email" required placeholder="staff@clinic.com"
-                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition">
+                <input type="email" name="email" value="{{ old('email') }}" required placeholder="staff@clinic.com"
+                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition @error('email') border-red-500 @enderror">
+                @error('email') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2">Password</label>
                 <input type="password" name="password" required placeholder="Minimum 8 characters"
-                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition">
+                    class="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-blue-500 outline-none transition @error('password') border-red-500 @enderror">
+                @error('password') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>

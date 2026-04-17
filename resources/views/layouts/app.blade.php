@@ -24,21 +24,27 @@
                 <span class="text-blue-500">✚</span> CLINIC OS
             </div>
             
-            <nav class="mt-6 flex-1 px-4 space-y-1">
-                <a href="{{ route('dashboard') }}" 
-                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('dashboard') ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                    Dashboard
-                </a>
-                <a href="{{ route('record.index') }}" 
-                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.*') ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                    Clinic Records
-                </a>
-                <a href="{{ route('medicines.index') }}" 
-                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                    Inventory Medicine
-                </a>
-            </nav>
+          <nav class="mt-6 flex-1 px-4 space-y-1">
+    <a href="{{ route('dashboard') }}" 
+       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('dashboard') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+        Dashboard
+    </a>
+    
+    <a href="{{ route('record.index') }}" 
+       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.index') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+        Clinic Records
+    </a>
+    
+    <a href="{{ route('medicines.index') }}" 
+       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+        Inventory Medicine
+    </a>
 
+    <a href="{{ route('record.create') }}" 
+       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+        <span class="mr-2 text-blue-500 font-bold">+</span> Add New Consultation
+    </a>
+</nav>
             <div class="p-4 border-t border-slate-800">
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf

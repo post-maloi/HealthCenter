@@ -21,24 +21,29 @@ class AuthController extends Controller
     }
 
     // ADD THIS: Handle the registration logic
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
+ public function register(Request $request)
+{
+    // 1. Update Validation
+    $request->validate([
+        'first_name' => 'required|string|max:255',
+        'middle_name' => 'nullable|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    // 2. Create User
+    $user = User::create([
+        'first_name' => $request->first_name,
+        'middle_name' => $request->middle_name,
+        'last_name' => $request->last_name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
 
-        Auth::login($user);
-
-        return redirect('/dashboard');
-    }
+    // 3. Redirect to Login (Instead of auto-logging in)
+    return redirect()->route('login')->with('success', 'Registration successful! Please sign in.');
+}
 
    // App/Http/Controllers/AuthController.php
 
