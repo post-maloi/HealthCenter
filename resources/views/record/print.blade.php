@@ -156,6 +156,8 @@
                                 <li>{{ $medicine->name }} (x{{ $medicine->pivot->quantity }})</li>
                             @endforeach
                         </ul>
+                    @elseif($hasValue($record->medicines_given))
+                        <p>{{ $record->medicines_given }}</p>
                     @else
                         <p class="text-gray-400 italic">No medications prescribed.</p>
                     @endif

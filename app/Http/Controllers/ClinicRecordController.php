@@ -8,9 +8,28 @@ use App\Models\Medicine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ClinicRecordController extends Controller
 {
+    private function normalizeMedicineName(string $name): string
+    {
+        $name = preg_replace('/\s+/', ' ', trim($name));
+        return mb_strtolower($name);
+    }
+
+    private function getDispensableMedicinesForSelection()
+    {
+        return Medicine::where('stock', '>', 0)
+            ->orderByRaw('CASE WHEN expiration_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('expiration_date')
+            ->orderBy('arrival_date')
+            ->get()
+            // Group by normalized name so minor spacing/case differences do not duplicate entries.
+            ->unique(fn ($item) => $this->normalizeMedicineName((string) $item->name))
+            ->values();
+    }
+
     private function formatAgeFromBirthday(string $birthday): string
     {
         $birth = Carbon::parse($birthday);
@@ -22,6 +41,7 @@ class ClinicRecordController extends Controller
     public function index(Request $request)
     {
         $search = $request->get('search');
+        $allMedicines = $this->getDispensableMedicinesForSelection();
 
         $records = ClinicRecord::whereIn('id', function ($query) {
             $query->select(DB::raw('MAX(id)'))
@@ -40,14 +60,18 @@ class ClinicRecordController extends Controller
 
         return view('record.index', [
             'records' => $records,
-            'allMedicines' => Medicine::where('stock', '>', 0)->get()
+            // Use one primary lot per medicine name to avoid duplicate picker options.
+            'allMedicines' => $allMedicines
         ]);
     }
 
     public function create()
     {
+        $allMedicines = $this->getDispensableMedicinesForSelection();
+
         return view('record.create', [
-            'allMedicines' => Medicine::where('stock', '>', 0)->get()
+            // Keep quick/full consultation medicine list consistent and non-duplicated.
+            'allMedicines' => $allMedicines
         ]);
     }
 
@@ -82,18 +106,86 @@ class ClinicRecordController extends Controller
             $validated['age'] = round($validated['age']) . ' yrs';
         }
 
-        // Ensure vital signs are saved even if empty (preventing NULL issues)
-        $record = ClinicRecord::create($validated);
+        DB::transaction(function () use ($request, $validated) {
+            // Ensure vital signs are saved even if empty (preventing NULL issues)
+            $record = ClinicRecord::create($validated);
+            $dispensedSummary = [];
 
-        if ($request->has('medicines')) {
-            foreach ($request->medicines as $med) {
-                if (!empty($med['id']) && !empty($med['quantity'])) {
-                    $record->medicines()->attach($med['id'], ['quantity' => $med['quantity']]);
-                    Medicine::where('id', $med['id'])->decrement('stock', $med['quantity']);
+            if ($request->has('medicines')) {
+                $requestedByMedicineKey = [];
+                $requestedLabelByMedicineKey = [];
+                $medicineIds = collect($request->medicines)
+                    ->pluck('id')
+                    ->filter()
+                    ->values();
+
+                $selectedMedicines = Medicine::whereIn('id', $medicineIds)->get()->keyBy('id');
+                $allInStockLots = Medicine::where('stock', '>', 0)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($request->medicines as $med) {
+                    if (empty($med['id']) || empty($med['quantity'])) {
+                        continue;
+                    }
+
+                    $selected = $selectedMedicines->get($med['id']);
+                    if (!$selected) {
+                        continue;
+                    }
+
+                    $medicineKey = $this->normalizeMedicineName((string) $selected->name);
+                    $requestedByMedicineKey[$medicineKey] = ($requestedByMedicineKey[$medicineKey] ?? 0) + (int) $med['quantity'];
+                    $requestedLabelByMedicineKey[$medicineKey] = $selected->name;
+                }
+
+                foreach ($requestedByMedicineKey as $medicineKey => $requestedQty) {
+                    if ($requestedQty <= 0) {
+                        continue;
+                    }
+
+                    // FEFO: dispense from the soonest expiration date first, grouped by normalized name.
+                    $lots = $allInStockLots
+                        ->filter(fn ($lot) => $this->normalizeMedicineName((string) $lot->name) === $medicineKey)
+                        ->sortBy([
+                            ['expiration_date', 'asc'],
+                            ['arrival_date', 'asc'],
+                        ])
+                        ->values();
+
+                    $availableStock = $lots->sum('stock');
+                    if ($availableStock < $requestedQty) {
+                        $medicineLabel = $requestedLabelByMedicineKey[$medicineKey] ?? 'Selected medicine';
+                        throw ValidationException::withMessages([
+                            'medicines' => "Insufficient stock for {$medicineLabel}. Requested {$requestedQty}, available {$availableStock}.",
+                        ]);
+                    }
+
+                    $remaining = $requestedQty;
+                    foreach ($lots as $lot) {
+                        if ($remaining <= 0) {
+                            break;
+                        }
+
+                        $take = min($remaining, (int) $lot->stock);
+                        if ($take <= 0) {
+                            continue;
+                        }
+
+                        $record->medicines()->attach($lot->id, ['quantity' => $take]);
+                        $dispensedSummary[] = "{$lot->name} (x{$take})";
+                        $lot->decrement('stock', $take);
+                        $remaining -= $take;
+                    }
                 }
             }
-        }
-        
+
+            if (!empty($dispensedSummary)) {
+                $record->update([
+                    'medicines_given' => implode(', ', $dispensedSummary),
+                ]);
+            }
+        });
 
         return redirect()->route('record.index')->with('success', 'Record saved!');
     }

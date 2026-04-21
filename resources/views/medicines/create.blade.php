@@ -25,6 +25,41 @@
             <input type="hidden" name="name" id="combined_name">
 
             <div class="space-y-5">
+                {{-- Generic Name Search Dropdown --}}
+                <div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Generic Name</label>
+                    <div class="space-y-2">
+                        <input type="text" id="generic_name" list="genericOptions" placeholder="Search or type generic name..." required
+                            class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
+                        <datalist id="genericOptions">
+                            <option value="Paracetamol"></option>
+                            <option value="Amoxicillin"></option>
+                            <option value="Ibuprofen"></option>
+                            <option value="Cetirizine"></option>
+                            <option value="Loratadine"></option>
+                            <option value="Mefenamic Acid"></option>
+                            <option value="Omeprazole"></option>
+                            <option value="Metformin"></option>
+                            <option value="Amlodipine"></option>
+                            <option value="Losartan"></option>
+                            <option value="Salbutamol"></option>
+                            <option value="Azithromycin"></option>
+                            <option value="Doxycycline"></option>
+                            <option value="Ciprofloxacin"></option>
+                            <option value="Co-Amoxiclav"></option>
+                            <option value="Vitamin C"></option>
+                            <option value="Ferrous Sulfate"></option>
+                        </datalist>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="addGenericBtn"
+                                class="hidden px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition">
+                                + Add this generic name
+                            </button>
+                            <span id="genericAddedMsg" class="hidden text-xs font-semibold text-emerald-600">Added to list</span>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Brand Name Input --}}
                 <div>
                     <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Brand Name</label>
@@ -32,12 +67,12 @@
                         class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
                 </div>
 
-                {{-- Generic Name Input --}}
+                {{-- Dosage Input --}}
                 <div>
-                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Generic Name</label>
-                    <input type="text" id="generic_name" placeholder="e.g. Paracetamol tablet 500mg" required
+                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Dosage (mg)</label>
+                    <input type="number" id="dosage_mg" placeholder="e.g. 500" min="1" step="1" required
                         class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
-                    <p class="mt-2 text-[10px] text-gray-400 italic">Example output: Brand (Generic Name)</p>
+                    <p class="mt-2 text-[10px] text-gray-400 italic">Example output: Brand (Generic Name) 500mg</p>
                 </div>
             </div>
 
@@ -54,12 +89,50 @@
 </div>
 
 <script>
+    const genericInput = document.getElementById('generic_name');
+    const genericList = document.getElementById('genericOptions');
+    const addGenericBtn = document.getElementById('addGenericBtn');
+    const genericAddedMsg = document.getElementById('genericAddedMsg');
+
+    function currentGenericValues() {
+        return Array.from(genericList.options).map(option => option.value.trim().toLowerCase());
+    }
+
+    function updateAddGenericVisibility() {
+        const value = genericInput.value.trim().toLowerCase();
+        const hasValue = value.length > 0;
+        const exists = currentGenericValues().includes(value);
+        addGenericBtn.classList.toggle('hidden', !hasValue || exists);
+        genericAddedMsg.classList.add('hidden');
+    }
+
+    genericInput.addEventListener('input', updateAddGenericVisibility);
+
+    addGenericBtn.addEventListener('click', function () {
+        const value = genericInput.value.trim();
+        if (!value) return;
+
+        const exists = currentGenericValues().includes(value.toLowerCase());
+        if (exists) {
+            addGenericBtn.classList.add('hidden');
+            return;
+        }
+
+        const option = document.createElement('option');
+        option.value = value;
+        genericList.appendChild(option);
+
+        addGenericBtn.classList.add('hidden');
+        genericAddedMsg.classList.remove('hidden');
+    });
+
     document.getElementById('medicineForm').addEventListener('submit', function(e) {
         const brand = document.getElementById('brand_name').value.trim();
         const generic = document.getElementById('generic_name').value.trim();
+        const dosage = document.getElementById('dosage_mg').value.trim();
         
-        // Combines them into "Brand (Generic)" format before sending to Controller
-        document.getElementById('combined_name').value = `${brand} (${generic})`;
+        // Combines them into "Brand (Generic) Dosagemg" format before sending to Controller
+        document.getElementById('combined_name').value = `${brand} (${generic}) ${dosage}mg`;
     });
 </script>
 @endsection

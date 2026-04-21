@@ -182,6 +182,10 @@
                             </div>
                         @endforeach
                     </div>
+                @elseif($hasValue($record->medicines_given))
+                    <div class="p-4 bg-green-50 rounded-2xl border border-green-100">
+                        <p class="font-bold text-gray-700">{{ $record->medicines_given }}</p>
+                    </div>
                 @else
                     <div class="py-10 text-center border border-dashed border-gray-200 rounded-3xl">
                         <p class="text-gray-400 font-bold uppercase text-xs tracking-widest">No medications prescribed.</p>

@@ -75,19 +75,12 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const rows = Array.from(document.querySelectorAll('#diagnosisReportTableBody .diagnosis-report-row')).map(row => row.outerHTML);
-        const tableBody = document.getElementById('diagnosisReportTableBody');
-        const pager = $('#diagnosisReportPagination');
-
-        if (rows.length > 10) {
-            pager.pagination({
-                dataSource: rows,
-                pageSize: 10,
-                showSizeChanger: false,
-                callback: function (data) {
-                    tableBody.innerHTML = data.join('');
-                }
-            });
-        }
+        renderPaginationTable({
+            pagerSelector: '#diagnosisReportPagination',
+            tableBodySelector: '#diagnosisReportTableBody',
+            rows: rows,
+            emptyRowHtml: '<tr><td colspan="5" class="px-6 py-16 text-center text-gray-400 italic">No diagnosis records found.</td></tr>'
+        });
     });
 </script>
 @endpush

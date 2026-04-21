@@ -160,7 +160,6 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
@@ -210,7 +209,7 @@
 
         function createMedicineRow() {
             const div = document.createElement('div');
-            div.className = "flex items-end gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 medicine-row";
+            div.className = "grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px_auto] gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 medicine-row";
             
             let options = '<option value="" disabled selected>Select Medicine</option>';
             allMedicines.forEach(med => { 
@@ -218,14 +217,16 @@
             });
 
             div.innerHTML = `
-                <div class="flex-1">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Medicine</label>
                     <select name="medicines[${rowIndex}][id]" class="med-select" required>${options}</select>
                 </div>
-                <div class="w-24">
-                    <input type="number" name="medicines[${rowIndex}][quantity]" required min="1" placeholder="Qty" 
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Quantity</label>
+                    <input type="number" name="medicines[${rowIndex}][quantity]" required min="1" value="1" placeholder="Qty" 
                         class="w-full px-3 py-2 border border-gray-200 rounded-lg h-[42px] text-sm outline-none">
                 </div>
-                <button type="button" class="mb-2 text-gray-300 hover:text-red-500 remove-row">✕</button>
+                <button type="button" class="mb-1 self-end justify-self-end text-gray-300 hover:text-red-500 remove-row" title="Remove medicine row">✕</button>
             `;
 
             container.appendChild(div);

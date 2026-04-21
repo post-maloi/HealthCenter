@@ -45,7 +45,8 @@
                                             ->whereNotNull('arrival_date')
                                             ->sortByDesc('arrival_date')
                                             ->first(); 
-                    $historyLots = $lots->where('stock', '>', 0)->sortBy('arrival_date');
+                    // Keep all lots in history (including out-of-stock) for full inventory traceability.
+                    $historyLots = $lots->sortBy('arrival_date');
                     $activeLots = $lots->where('stock', '>', 0);
                     $expiryLot = $activeLots->whereNotNull('expiration_date')->sortBy('expiration_date')->first();
                 @endphp

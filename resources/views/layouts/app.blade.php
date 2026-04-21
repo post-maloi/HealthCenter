@@ -124,6 +124,7 @@
             }
         }, 3000);
     </script>
+    <script src="{{ asset('js/pagination.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

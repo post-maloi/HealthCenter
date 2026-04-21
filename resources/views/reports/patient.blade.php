@@ -97,19 +97,12 @@
         });
 
         const rows = Array.from(document.querySelectorAll('#patientReportTableBody .patient-report-row')).map(row => row.outerHTML);
-        const tableBody = document.getElementById('patientReportTableBody');
-        const pager = $('#patientReportPagination');
-
-        if (rows.length > 10) {
-            pager.pagination({
-                dataSource: rows,
-                pageSize: 10,
-                showSizeChanger: false,
-                callback: function (data) {
-                    tableBody.innerHTML = data.join('');
-                }
-            });
-        }
+        renderPaginationTable({
+            pagerSelector: '#patientReportPagination',
+            tableBodySelector: '#patientReportTableBody',
+            rows: rows,
+            emptyRowHtml: '<tr><td colspan="5" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
+        });
     });
 </script>
 @endpush
