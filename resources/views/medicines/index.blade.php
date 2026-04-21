@@ -37,7 +37,7 @@
                     <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody id="inventoryTableBody" class="divide-y divide-gray-100">
                 @forelse($medicines->groupBy('name') as $name => $lots)
                 @php 
                     $totalStock = $lots->sum('stock');
@@ -175,16 +175,58 @@
             </tbody>
         </table>
     </div>
+    <div id="inventoryPagination" class="mt-4"></div>
+    <div id="inventoryEmptyMessage" class="px-6 py-8 text-center text-gray-400 italic hidden">No medicine records found.</div>
 </div>
 
 <script>
-    function runFilters() {
-        const input = document.getElementById("inventorySearch").value.toUpperCase();
-        const rows = document.querySelectorAll(".inventory-row");
-        rows.forEach(row => {
-            const name = row.querySelector(".medicine-name").textContent.toUpperCase();
-            row.style.display = name.includes(input) ? "" : "none";
+    const inventoryRows = Array.from(document.querySelectorAll("#inventoryTableBody .inventory-row")).map((row) => {
+        const name = row.querySelector(".medicine-name")?.textContent.toUpperCase() ?? "";
+        return { element: row, name };
+    });
+
+    function renderInventoryPagination(filteredRows) {
+        const pager = $('#inventoryPagination');
+        const emptyMessage = document.getElementById("inventoryEmptyMessage");
+
+        if (pager.data('pagination')) {
+            pager.pagination('destroy');
+        }
+
+        inventoryRows.forEach(item => {
+            item.element.style.display = 'none';
+        });
+
+        if (filteredRows.length === 0) {
+            emptyMessage.classList.remove('hidden');
+            return;
+        }
+
+        emptyMessage.classList.add('hidden');
+
+        pager.pagination({
+            dataSource: filteredRows,
+            pageSize: 10,
+            showSizeChanger: false,
+            callback: function (data) {
+                inventoryRows.forEach(item => {
+                    item.element.style.display = 'none';
+                });
+                data.forEach(item => {
+                    item.element.style.display = '';
+                });
+            }
         });
     }
+
+    function runFilters() {
+        const input = document.getElementById("inventorySearch").value.toUpperCase();
+        const filtered = inventoryRows.filter(row => row.name.includes(input));
+        renderInventoryPagination(filtered);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        renderInventoryPagination(inventoryRows);
+    });
 </script>
 @endsection

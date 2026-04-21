@@ -1,199 +1,194 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Patient Record | CLINIC OS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans antialiased">
-    <div class="flex h-screen overflow-hidden">
+@extends('layouts.app')
+
+@section('content')
+@php
+    $hasValue = fn ($value) => !is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A';
+@endphp
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .print-full-width { 
+            grid-column: span 3 / span 3 !important; 
+            width: 100% !important; 
+            display: block !important; 
+        }
+        body { background-color: white !important; padding: 0 !important; }
+        .max-w-5xl { max-width: 100% !important; width: 100% !important; }
+        .shadow-sm { box-shadow: none !important; border: 1px solid #eee !important; }
+        .rounded-\[2rem\] { border-radius: 0.5rem !important; } /* Standardize corners for print */
+    }
+</style>
+
+<div class="max-w-5xl mx-auto py-8 px-4">
+    {{-- Header --}}
+    <div class="mb-8 flex justify-between items-center no-print">
+        <div>
+            <h1 class="text-2xl font-black text-gray-800 uppercase tracking-tight">Consultation Record</h1>
+            <p class="text-gray-500 text-sm">Date: {{ \Carbon\Carbon::parse($record->consultation_date)->format('M d, Y') }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ route('record.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">
+                ← Back
+            </a>
+            <a href="{{ route('record.print', $record->id) }}" target="_blank" class="px-4 py-2 bg-[#2D8A80] text-white rounded-xl font-bold hover:bg-[#246e66] transition shadow-lg shadow-teal-100">
+                Print Record
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         
-        {{-- SIDEBAR --}}
-        <aside class="w-64 bg-slate-900 text-white hidden md:flex flex-col shadow-xl z-10">
-            <div class="p-6 text-xl font-bold border-b border-slate-800 flex items-center gap-2">
-                <span class="text-blue-500 font-bold">+</span> CLINIC OS
-            </div>
-            
-            <nav class="mt-6 flex-1 px-4 space-y-2">
-                {{-- Dashboard --}}
-                <a href="{{ route('dashboard') }}" 
-                   class="flex items-center px-4 py-3 rounded-lg transition-all duration-200 {{ request()->routeIs('dashboard') ? 'bg-slate-800/50 text-white border-l-4 border-blue-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/30 hover:text-white' }}">
-                    <span class="font-medium text-sm">Dashboard</span>
-                </a>
-                
-                {{-- Clinic Records (Active state for viewing/showing records) --}}
-                <a href="{{ route('record.index') }}" 
-                   class="flex items-center px-4 py-3 rounded-lg transition-all duration-200 {{ request()->routeIs('record.*') && !request()->routeIs('record.create') ? 'bg-slate-800/50 text-white border-l-4 border-blue-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/30 hover:text-white' }}">
-                    <span class="font-medium text-sm">Clinic Records</span>
-                </a>
-                
-                {{-- Inventory Medicine --}}
-                <a href="{{ route('medicines.index') }}" 
-                   class="flex items-center px-4 py-3 rounded-lg transition-all duration-200 {{ request()->routeIs('medicines.*') ? 'bg-slate-800/50 text-white border-l-4 border-blue-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/30 hover:text-white' }}">
-                    <span class="font-medium text-sm">Inventory Medicine</span>
-                </a>
-
-                <div class="pt-4 mt-4 border-t border-slate-800">
-                    {{-- Add New Consultation --}}
-                    <a href="{{ route('record.create') }}" 
-                       class="flex items-center gap-2 px-4 py-3 rounded-lg transition-all duration-200 {{ request()->routeIs('record.create') ? 'bg-slate-800/50 text-white border-l-4 border-blue-500 shadow-sm' : 'text-slate-400 hover:bg-slate-800/30 hover:text-white' }}">
-                        <span class="text-blue-500 font-bold">+</span>
-                        <span class="font-medium text-sm">Add New Consultation</span>
-                    </a>
-                </div>
-            </nav>
-            
-            {{-- Logout Section --}}
-            <div class="p-4 border-t border-slate-800 mt-auto">
-                <form action="{{ route('logout') }}" method="POST">
-                    @csrf
-                    <button type="submit" 
-                            class="w-full flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-slate-800/50 rounded-lg transition-all duration-200 group">
-                        <svg class="w-5 h-5 transition-colors duration-200 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <span class="font-medium text-sm">Logout</span>
-                    </button>
-                </form>
-            </div>
-        </aside>
-
-        {{-- MAIN CONTENT --}}
-        <main class="flex-1 p-8 overflow-y-auto bg-slate-50">
-            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                {{-- Header Section --}}
-                <div class="p-8 border-b border-gray-100 flex justify-between items-start">
+        {{-- Left Column: Patient Info --}}
+        <div class="md:col-span-1 space-y-6">
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 shadow-sm">
+                <h2 class="text-xs font-black text-gray-300 uppercase tracking-widest mb-4">Patient Information</h2>
+                <div class="space-y-4">
                     <div>
-                        <h2 class="text-3xl font-extrabold text-slate-800 capitalize">
-                            {{ $record->first_name }} {{ $record->middle_name }} {{ $record->last_name }}
-                        </h2>
-                        <p class="text-blue-600 font-medium mt-1">Patient Clinical File</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Full Name</p>
+                        <p class="font-black text-gray-800 uppercase">{{ $record->last_name }}, {{ $record->first_name }} {{ $record->middle_name }}</p>
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Consultation</span>
-                        <p class="text-lg font-semibold text-slate-700">
-                            {{ \Carbon\Carbon::parse($record->consultation_date)->format('M d, Y') }}
-                        </p>
-                    </div>
-                </div>
-
-                {{-- Primary Info Grid --}}
-                <div class="grid grid-cols-3 gap-8 p-8 bg-slate-50/50 border-b border-gray-100">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Gender</label>
-                        <p class="text-slate-800 font-medium">{{ $record->gender }}</p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Age</label>
-                        <p class="text-slate-800 font-medium">
-                            @php
-                                $birthday = \Carbon\Carbon::parse($record->birthday);
-                                $years = $birthday->diffInYears(now());
-                                $months = $birthday->diffInMonths(now());
-                            @endphp
-                            {{ $years > 0 ? (int)$years . ' Yrs' : (int)$months . ' Months' }}
-                        </p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Birthday</label>
-                        <p class="text-slate-800 font-medium">
-                            {{ \Carbon\Carbon::parse($record->birthday)->format('F d, Y') }}
-                        </p>
-                    </div>
-                </div>
-
-                {{-- Contact Info Grid --}}
-                <div class="grid grid-cols-3 gap-8 p-8 bg-slate-50/50">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Civil Status</label>
-                        <p class="text-slate-800 font-medium">{{ $record->civil_status ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Contact Number</label>
-                        <p class="text-slate-800 font-medium">{{ $record->contact_number ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase">Purok / Address</label>
-                        <p class="text-slate-800 font-medium">{{ $record->address_purok ?? 'N/A' }}</p>
-                    </div>
-                </div>
-
-                <div class="p-8 space-y-8">
-                    {{-- Diagnosis --}}
-                    <section>
-                        <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase mb-3">
-                            <span class="w-2 h-2 bg-red-500 rounded-full"></span> Current Diagnosis
-                        </h3>
-                        <div class="p-5 bg-white border border-gray-200 rounded-xl text-slate-700 leading-relaxed italic">
-                            {{ $record->diagnosis }}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Age / Sex</p>
+                            <p class="font-bold text-gray-700">
+                                {{-- Robust Age Logic: Handles both strings like "22 yrs" and numeric decimals --}}
+                                {{ is_numeric($record->age) ? round($record->age) . ' yrs' : ($record->age ?: '--') }} / {{ $record->gender }}
+                            </p>
                         </div>
-                    </section>
-
-                    {{-- Medicines --}}
-                    <section>
-                        <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800 uppercase mb-3">
-                            <span class="w-2 h-2 bg-green-500 rounded-full"></span> Medicines Given
-                        </h3>
-                        <div class="p-5 bg-white border border-gray-200 rounded-xl text-slate-700">
-                            @if($record->medicines->count() > 0)
-                                <ul class="list-disc list-inside space-y-1">
-                                    @foreach($record->medicines as $medicine)
-                                        <li>{{ $medicine->name }} (x{{ $medicine->pivot->quantity }})</li>
-                                    @endforeach
-                                </ul>
-                            @else
-                                <span class="text-gray-400 italic">No medicines recorded for this visit.</span>
-                            @endif
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Status</p>
+                            <p class="font-bold text-gray-700">{{ $record->civil_status }}</p>
                         </div>
-                    </section>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Address</p>
+                        <p class="font-bold text-gray-700 uppercase">{{ $record->address_purok }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Visit History Sidebar (Hidden during print) --}}
+            @if(isset($history) && $history->count() > 1)
+            <div class="bg-gray-50 rounded-[2rem] p-6 no-print">
+                <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Visit History</h2>
+                <div class="space-y-3">
+                    @foreach($history as $visit)
+                        <a href="{{ route('record.show', $visit->id) }}" class="block p-3 rounded-xl border {{ $visit->id == $record->id ? 'bg-white border-[#2D8A80] shadow-sm' : 'border-transparent hover:bg-white' }} transition">
+                            <p class="text-xs font-black {{ $visit->id == $record->id ? 'text-[#2D8A80]' : 'text-gray-600' }}">
+                                {{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}
+                            </p>
+                            <p class="text-[10px] text-gray-400 truncate">{{ $visit->diagnosis }}</p>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+        </div>
+
+        {{-- Right Column: SOAP & Vitals --}}
+        <div class="md:col-span-2 space-y-6 print-full-width">
+            
+            {{-- S - Subjective --}}
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Subjective Findings</h2>
+                </div>
+                <p class="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{{ $record->subjective ?: 'No complaints recorded.' }}</p>
+            </div>
+
+            {{-- O - Objective / Vital Signs --}}
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Objective / Vital Signs</h2>
+                </div>
+                
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">Temp</p>
+                        <p class="text-xl font-black text-gray-800">
+                            {{ $hasValue($record->temp) ? $record->temp : '--' }}@if($hasValue($record->temp))<span class="text-xs">°C</span>@endif
+                        </p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">BP</p>
+                        <p class="text-xl font-black text-gray-800">{{ $record->bp ?: '--' }}</p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">Pulse</p>
+                        <p class="text-xl font-black text-gray-800">
+                            {{ $hasValue($record->pr) ? $record->pr : '--' }}@if($hasValue($record->pr))<span class="text-xs ml-1">bpm</span>@endif
+                        </p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">Resp</p>
+                        <p class="text-xl font-black text-gray-800">
+                            {{ $hasValue($record->rr) ? $record->rr : '--' }}@if($hasValue($record->rr))<span class="text-xs ml-1">cpm</span>@endif
+                        </p>
+                    </div>
                 </div>
 
-                {{-- Consultation History --}}
-                <div class="p-8 bg-slate-50 border-t border-gray-100">
-                    <h3 class="text-sm font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Past Consultations ({{ $history->count() }})
-                    </h3>
-                    
+                <div class="grid grid-cols-3 gap-4 mt-4">
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">Weight</p>
+                        <p class="text-lg font-black text-gray-800">
+                            {{ $hasValue($record->weight) ? $record->weight : '--' }}@if($hasValue($record->weight))<span class="text-xs text-gray-400 ml-1">kg</span>@endif
+                        </p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl text-center">
+                        <p class="text-[10px] font-black text-gray-400 uppercase">Height</p>
+                        <p class="text-lg font-black text-gray-800">
+                            {{ $hasValue($record->height) ? $record->height : '--' }}@if($hasValue($record->height))<span class="text-xs text-gray-400 ml-1">cm</span>@endif
+                        </p>
+                    </div>
+                    <div class="p-4 bg-blue-50 rounded-2xl text-center border border-blue-100">
+                        <p class="text-[10px] font-black text-blue-400 uppercase">BMI</p>
+                        <p class="text-lg font-black text-blue-600">{{ $record->bmi ?: '--' }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 p-4 border border-dashed border-gray-200 rounded-2xl">
+                    <p class="text-[10px] font-black text-gray-300 uppercase mb-2">Physical Examination Details</p>
+                    <p class="text-gray-600 italic text-sm whitespace-pre-line">{{ $record->objective ?: 'No specific physical examination details provided.' }}</p>
+                </div>
+            </div>
+
+            {{-- Assessment & Plan --}}
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-red-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Assessment / Diagnosis</h2>
+                </div>
+                <div class="p-6 bg-red-50 rounded-3xl border border-red-100">
+                    <p class="text-lg font-bold text-gray-800">{{ $record->diagnosis }}</p>
+                </div>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-green-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Plan / Prescribed Medicines</h2>
+                </div>
+                
+                @if($record->medicines && $record->medicines->count() > 0)
                     <div class="space-y-3">
-                        @foreach($history as $visit)
-                            <div class="p-4 bg-white border rounded-xl shadow-sm flex justify-between items-center {{ $visit->id == $record->id ? 'ring-2 ring-blue-500' : '' }}">
-                                <div>
-                                    <p class="font-bold text-slate-700">
-                                        {{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}
-                                    </p>
-                                    <p class="text-sm text-gray-500 truncate max-w-xs">Diagnosis: {{ $visit->diagnosis }}</p>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    @if($visit->id == $record->id)
-                                        <span class="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded uppercase">Current View</span>
-                                    @else
-                                        <a href="{{ route('record.show', $visit->id) }}" class="text-sm font-semibold text-blue-600 hover:text-blue-800">View History →</a>
-                                    @endif
-                                </div>
+                        @foreach($record->medicines as $medicine)
+                            <div class="flex justify-between items-center p-4 bg-green-50 rounded-2xl border border-green-100">
+                                <span class="font-black text-gray-700 uppercase">{{ $medicine->name }}</span>
+                                <span class="px-4 py-1 bg-white text-green-600 rounded-lg font-black text-sm shadow-sm">
+                                    {{ $medicine->pivot->quantity }} Qty
+                                </span>
                             </div>
                         @endforeach
                     </div>
-                </div>
-
-                {{-- Footer Actions --}}
-                <div class="p-6 bg-gray-50 border-t border-gray-200 flex justify-end gap-4">
-                    <a href="{{ route('record.index') }}" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-600 font-semibold hover:bg-white transition">Back to List</a>
-                    
-                    <a href="{{ route('record.print', $record->id) }}" target="_blank" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-600 font-semibold hover:bg-white transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                        Print PDF
-                    </a>
-                    
-                    <a href="{{ route('record.edit', $record->id) }}" class="px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 shadow-md transition">
-                        Edit Entry
-                    </a>
-                </div>
+                @else
+                    <div class="py-10 text-center border border-dashed border-gray-200 rounded-3xl">
+                        <p class="text-gray-400 font-bold uppercase text-xs tracking-widest">No medications prescribed.</p>
+                    </div>
+                @endif
             </div>
-        </main>
+        </div>
     </div>
-</body>
-</html>
+</div>
+@endsection

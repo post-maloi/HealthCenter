@@ -7,6 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/paginationjs@2.6.0/dist/pagination.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/paginationjs@2.6.0/dist/pagination.min.js"></script>
     
     <style>
         ::-webkit-scrollbar { width: 6px; }
@@ -48,6 +51,28 @@
                     Inventory Medicine
                 </a>
 
+                {{-- Reports Dropdown --}}
+                <div class="pt-1">
+                    <button type="button"
+                        onclick="toggleReportsMenu()"
+                        class="w-full flex justify-between items-center py-3 px-4 rounded-lg transition {{ request()->routeIs('reports.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                        <span>Reports</span>
+                        <svg id="reports-arrow" class="w-4 h-4 transition-transform {{ request()->routeIs('reports.*') ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div id="reports-menu" class="ml-4 mt-1 space-y-1 {{ request()->routeIs('reports.*') ? '' : 'hidden' }}">
+                        <a href="{{ route('reports.diagnosis') }}"
+                           class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.diagnosis') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            Diagnosis
+                        </a>
+                        <a href="{{ route('reports.patients') }}"
+                           class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.patients') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            Patient
+                        </a>
+                    </div>
+                </div>
+
                 <div class="pt-4 mt-4 border-t border-slate-800">
                     {{-- Add New Consultation --}}
                     <a href="{{ route('record.create') }}" 
@@ -81,6 +106,15 @@
     </div>
 
     <script>
+        function toggleReportsMenu() {
+            const menu = document.getElementById('reports-menu');
+            const arrow = document.getElementById('reports-arrow');
+            if (!menu || !arrow) return;
+
+            menu.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
         setTimeout(() => {
             const alert = document.getElementById('alert-msg');
             if (alert) {
@@ -90,5 +124,6 @@
             }
         }, 3000);
     </script>
+    @stack('scripts')
 </body>
 </html>

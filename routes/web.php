@@ -4,6 +4,7 @@ use App\Http\Controllers\ClinicRecordController;
 use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ClinicRecord;
@@ -58,8 +59,8 @@ Route::middleware('auth')->group(function () {
 
     // --- CLINIC RECORDS & APPOINTMENTS ---
     Route::prefix('record')->name('record.')->group(function () {
-        Route::get('/create', [AppointmentController::class, 'create'])->name('create');
-        Route::post('/store', [AppointmentController::class, 'store'])->name('store');
+        Route::get('/create', [ClinicRecordController::class, 'create'])->name('create');
+        Route::post('/store', [ClinicRecordController::class, 'store'])->name('store');
         Route::post('/quick-add', [ClinicRecordController::class, 'quickStore'])->name('quickStore');
         Route::get('/{id}/edit', [ClinicRecordController::class, 'edit'])->name('edit');
     });
@@ -70,6 +71,14 @@ Route::middleware('auth')->group(function () {
     
     // Medicines - Custom Group Delete
     Route::delete('/medicines-destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group');
+
+    // Reports
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/patients', [ReportController::class, 'patient'])->name('patients');
+        Route::get('/patients/export', [ReportController::class, 'exportPatientExcel'])->name('patients.export');
+        Route::get('/diagnosis', [ReportController::class, 'diagnosis'])->name('diagnosis');
+        Route::get('/diagnosis/export', [ReportController::class, 'exportDiagnosisExcel'])->name('diagnosis.export');
+    });
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
