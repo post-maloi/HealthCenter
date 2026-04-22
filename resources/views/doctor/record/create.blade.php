@@ -196,11 +196,29 @@
                                 </div>
                                 <button type="button" id="add-medicine-btn" class="text-blue-600 hover:text-blue-800 text-[10px] font-bold tracking-widest">+ ADD ITEM</button>
                             </div>
-                            <div class="mb-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Consulted by (BHW)</p>
+                            <div id="medicine-rows-container" class="space-y-3"></div>
+                            <div class="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Previous Consultation Encoder</p>
                                 <p class="text-sm font-bold text-gray-700 uppercase">{{ $latest?->consulted_by ?: '—' }}</p>
                             </div>
-                            <div id="medicine-rows-container" class="space-y-3"></div>
+                            <div class="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                                <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Consulted By (Current User)</p>
+                                <p class="text-sm font-bold text-emerald-700 uppercase">
+                                    @if((auth()->user()->role ?? '') === 'nurse')
+                                        Nurse {{ trim((auth()->user()->first_name ?? '').' '.(auth()->user()->middle_name ?? '').' '.(auth()->user()->last_name ?? '')) }}
+                                    @else
+                                        Dr. {{ trim((auth()->user()->first_name ?? '').' '.(auth()->user()->middle_name ?? '').' '.(auth()->user()->last_name ?? '')) }}
+                                    @endif
+                                </p>
+                            </div>
+                            @if((auth()->user()->role ?? '') === 'nurse')
+                            <div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Consulted by (Nurse)</p>
+                                <p class="text-sm font-bold text-blue-700 uppercase">
+                                    Nurse {{ trim((auth()->user()->first_name ?? '').' '.(auth()->user()->middle_name ?? '').' '.(auth()->user()->last_name ?? '')) }}
+                                </p>
+                            </div>
+                            @endif
                         </div>
 
                         <div class="pt-6 flex gap-4">

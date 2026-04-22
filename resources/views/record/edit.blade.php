@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $role = auth()->user()->role ?? 'bhw';
+    $isNurse = $role === 'nurse';
+@endphp
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <div class="max-w-4xl mx-auto py-8">
@@ -17,17 +21,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">First Name</label>
-                    <input type="text" name="first_name" value="{{ old('first_name', $record->first_name) }}" required
+                    <input type="text" name="first_name" value="{{ old('first_name', $record->first_name) }}" required {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-gray-50">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Middle Name</label>
-                    <input type="text" name="middle_name" value="{{ old('middle_name', $record->middle_name) }}"
+                    <input type="text" name="middle_name" value="{{ old('middle_name', $record->middle_name) }}" {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-gray-50">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Last Name</label>
-                    <input type="text" name="last_name" value="{{ old('last_name', $record->last_name) }}" required
+                    <input type="text" name="last_name" value="{{ old('last_name', $record->last_name) }}" required {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-gray-50">
                 </div>
             </div>
@@ -35,12 +39,12 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Date of Consultation</label>
-                    <input type="date" name="consultation_date" value="{{ old('consultation_date', $record->consultation_date->format('Y-m-d')) }}" required
+                    <input type="date" name="consultation_date" value="{{ old('consultation_date', $record->consultation_date->format('Y-m-d')) }}" required {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Birthday</label>
-                    <input type="date" name="birthday" id="birthday" value="{{ old('birthday', $record->birthday->format('Y-m-d')) }}" onchange="calculateAge()" required
+                    <input type="date" name="birthday" id="birthday" value="{{ old('birthday', $record->birthday->format('Y-m-d')) }}" onchange="calculateAge()" required {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-gray-50">
                 </div>
             </div>
@@ -49,12 +53,12 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Contact Number</label>
-                    <input type="text" name="contact_number" value="{{ old('contact_number', $record->contact_number) }}"
+                    <input type="text" name="contact_number" value="{{ old('contact_number', $record->contact_number) }}" {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition">
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Purok / Address</label>
-                    <input type="text" name="address_purok" value="{{ old('address_purok', $record->address_purok) }}" required
+                    <input type="text" name="address_purok" value="{{ old('address_purok', $record->address_purok) }}" required {{ $isNurse ? 'readonly' : '' }}
                         class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition">
                 </div>
             </div>
@@ -62,14 +66,14 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Gender</label>
-                    <select name="gender" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-white">
+                    <select name="gender" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-white" {{ $isNurse ? 'disabled' : '' }}>
                         <option value="Male" {{ $record->gender == 'Male' ? 'selected' : '' }}>Male</option>
                         <option value="Female" {{ $record->gender == 'Female' ? 'selected' : '' }}>Female</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Civil Status</label>
-                    <select name="civil_status" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-white">
+                    <select name="civil_status" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-white" {{ $isNurse ? 'disabled' : '' }}>
                         <option value="Single" {{ $record->civil_status == 'Single' ? 'selected' : '' }}>Single</option>
                         <option value="Married" {{ $record->civil_status == 'Married' ? 'selected' : '' }}>Married</option>
                         <option value="Widowed" {{ $record->civil_status == 'Widowed' ? 'selected' : '' }}>Widowed</option>
@@ -83,6 +87,35 @@
                 </div>
             </div>
 
+            @if($isNurse)
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Temperature</label>
+                    <input type="text" name="temp" value="{{ old('temp', $record->temp) }}" class="w-full px-4 py-3 rounded-xl border border-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Blood Pressure</label>
+                    <input type="text" name="bp" value="{{ old('bp', $record->bp) }}" class="w-full px-4 py-3 rounded-xl border border-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Weight (kg)</label>
+                    <input type="number" step="0.1" name="weight" value="{{ old('weight', $record->weight) }}" class="w-full px-4 py-3 rounded-xl border border-gray-200">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Triage</label>
+                    <input type="text" name="triage" value="{{ old('triage') }}" placeholder="e.g. Urgent / Non-Urgent" class="w-full px-4 py-3 rounded-xl border border-gray-200">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Monitoring Notes</label>
+                    <input type="text" name="monitoring_notes" value="{{ old('monitoring_notes') }}" placeholder="Patient monitoring notes" class="w-full px-4 py-3 rounded-xl border border-gray-200">
+                </div>
+            </div>
+            <div class="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700">
+                Nurse scope: vitals, triage, and monitoring only. Status remains waiting_for_doctor.
+            </div>
+            @else
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Diagnosis</label>
                 <textarea name="diagnosis" rows="3" placeholder="Describe symptoms/results" required
@@ -102,6 +135,7 @@
                     {{-- Row injection --}}
                 </div>
             </div>
+            @endif
 
             <div class="pt-6 flex gap-4">
                 <button type="submit" class="flex-grow bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition">

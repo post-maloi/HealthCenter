@@ -146,6 +146,7 @@
                                         </div>
 
                                         <div class="flex flex-col gap-2 pl-6 border-l border-gray-50">
+                                            <a href="{{ route('medicines.edit', $lot) }}" class="px-5 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase text-center hover:bg-blue-100 transition">View</a>
                                             <a href="{{ route('medicines.edit', $lot) }}" class="px-5 py-2 bg-[#E9F3F1] text-[#2D8A80] rounded-xl text-[10px] font-black uppercase text-center hover:bg-teal-50 transition">Edit</a>
                                             <form action="{{ route('medicines.destroy', $lot) }}" method="POST" onsubmit="return confirm('Remove this batch?')" class="m-0">
                                                 @csrf @method('DELETE')

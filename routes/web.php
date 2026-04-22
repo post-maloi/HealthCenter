@@ -34,7 +34,7 @@ Route::middleware('auth')->group(function () {
     // Keep /dashboard as a single entry point and redirect based on role.
     Route::get('/dashboard', function () {
         $role = Auth::user()->role ?? 'bhw';
-        if ($role === 'doctor') {
+        if (in_array($role, ['doctor', 'nurse'], true)) {
             return redirect()->route('doctor.dashboard');
         }
 
@@ -60,23 +60,23 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     // --- CLINIC RECORDS & APPOINTMENTS ---
-    Route::middleware('role:bhw')->group(function () {
+    Route::middleware('role:bhw,nurse,doctor')->group(function () {
         Route::prefix('record')->name('record.')->group(function () {
-        Route::get('/create', [ClinicRecordController::class, 'create'])->name('create');
-        Route::post('/store', [ClinicRecordController::class, 'store'])->name('store');
-        Route::post('/quick-add', [ClinicRecordController::class, 'quickStore'])->name('quickStore');
-        Route::get('/{id}/edit', [ClinicRecordController::class, 'edit'])->name('edit');
+            Route::get('/create', [ClinicRecordController::class, 'create'])->name('create')->middleware('role:bhw');
+            Route::post('/store', [ClinicRecordController::class, 'store'])->name('store')->middleware('role:bhw');
+            Route::post('/quick-add', [ClinicRecordController::class, 'quickStore'])->name('quickStore')->middleware('role:bhw');
+            Route::get('/{id}/edit', [ClinicRecordController::class, 'edit'])->name('edit');
         });
 
         // Resources
         Route::resource('record', ClinicRecordController::class)->except(['create', 'store', 'edit']);
-        Route::resource('medicines', MedicineController::class);
+        Route::resource('medicines', MedicineController::class)->middleware('role:bhw,doctor,nurse');
     
         // Medicines - Custom Group Delete
-        Route::delete('/medicines-destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group');
+        Route::delete('/medicines-destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group')->middleware('role:bhw,doctor,nurse');
 
         // Reports
-        Route::prefix('reports')->name('reports.')->group(function () {
+        Route::prefix('reports')->name('reports.')->middleware('role:bhw')->group(function () {
             Route::get('/patients', [ReportController::class, 'patient'])->name('patients');
             Route::get('/patients/export', [ReportController::class, 'exportPatientExcel'])->name('patients.export');
             Route::get('/diagnosis', [ReportController::class, 'diagnosis'])->name('diagnosis');
@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // --- DOCTOR AREA ---
-    Route::prefix('doctor')->name('doctor.')->middleware('role:doctor')->group(function () {
+    Route::prefix('doctor')->name('doctor.')->middleware('role:doctor,nurse')->group(function () {
         Route::get('/dashboard', [DoctorClinicRecordController::class, 'dashboard'])->name('dashboard');
 
         Route::get('/patient/{id}', [DoctorClinicRecordController::class, 'patientInfo'])->name('patient.info');

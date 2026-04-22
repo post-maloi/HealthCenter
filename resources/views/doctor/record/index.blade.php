@@ -108,7 +108,13 @@
                     </td>
                     
                     <td class="px-6 py-4 text-sm text-gray-600">{{ $record->address_purok }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600 italic">"{{ Str::limit($record->diagnosis, 30) }}"</td>
+                    <td class="px-6 py-4 text-sm text-gray-600 italic">
+                        @if(trim((string) $record->diagnosis) === 'For doctor assessment')
+                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">waiting_for_doctor</span>
+                        @else
+                            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wide">completed</span>
+                        @endif
+                    </td>
                     
                     <td class="px-6 py-4 text-right">
                         <div class="flex justify-end gap-3">
@@ -138,6 +144,13 @@
     </div>
     <div id="recordsPagination" class="mt-4"></div>
 </div>
+
+<button type="button"
+    onclick="showDoctorFloatingHint()"
+    class="fixed bottom-8 right-8 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700">
+    <span class="text-base leading-none">+</span>
+    Add New Consultation
+</button>
 
 <div id="quickAddModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -458,6 +471,23 @@ function handleOpenModal(button) {
 function closeQuickAdd() {
     document.getElementById('quickAddModal').classList.add('hidden');
     document.body.style.overflow = 'auto';
+}
+
+function showDoctorFloatingHint() {
+    const existing = document.getElementById('doctor-floating-hint');
+    if (existing) existing.remove();
+
+    const hint = document.createElement('div');
+    hint.id = 'doctor-floating-hint';
+    hint.className = 'fixed bottom-24 right-8 z-50 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 shadow-lg';
+    hint.textContent = 'Select a patient row and click the + icon to add consultation.';
+    document.body.appendChild(hint);
+
+    setTimeout(() => {
+        hint.style.opacity = '0';
+        hint.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => hint.remove(), 300);
+    }, 2200);
 }
 
 document.addEventListener('input', function (e) {

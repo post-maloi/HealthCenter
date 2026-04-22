@@ -30,9 +30,10 @@ class MedicineController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|max:50',
-            'dosage_value' => 'required|numeric|min:0.01',
-            'dosage_unit' => 'required|in:mg,ml',
+            // For "Add New Medicine" these are provided; for "Add Stock" modal they can be omitted.
+            'type' => 'nullable|string|max:50',
+            'dosage_value' => 'nullable|numeric|min:0.01',
+            'dosage_unit' => 'nullable|in:mg,ml',
             'batch_number' => 'nullable|string|max:100',
             'stock' => 'required|integer|min:0',
             'expiration_date' => 'required|date',

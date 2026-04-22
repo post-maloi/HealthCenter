@@ -27,6 +27,10 @@ class EnsureRole
             abort(403);
         }
 
+        if ((string) $user->role === 'doctor' && !now()->isWednesday()) {
+            abort(403, 'Doctor access is available only every Wednesday.');
+        }
+
         return $next($request);
     }
 }

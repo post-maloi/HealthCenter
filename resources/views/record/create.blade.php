@@ -89,13 +89,31 @@
 
                             <div class="col-span-2">
                                 <label class="block text-xs font-bold text-gray-500 mb-1">Address / Purok</label>
-                                <input type="text" name="address_purok" value="{{ old('address_purok') }}" required
-                                    class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
+                                <div class="space-y-2">
+                                    <select id="address_select"
+                                        class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
+                                        <option value="" disabled selected>Select address</option>
+                                        @foreach(($addressOptions ?? []) as $address)
+                                            <option value="{{ $address }}">{{ $address }}</option>
+                                        @endforeach
+                                        <option value="__new__">+ Add new address...</option>
+                                    </select>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" id="address_new_input" placeholder="Type new address / purok"
+                                            class="hidden w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
+                                        <button type="button" id="show_new_address_btn"
+                                            class="px-3 py-2 rounded-lg border border-blue-200 text-blue-600 text-xs font-bold uppercase tracking-wide hover:bg-blue-50 transition">
+                                            Add New
+                                        </button>
+                                    </div>
+                                </div>
+                                <input type="hidden" name="address_purok" id="address_purok_hidden" value="{{ old('address_purok') }}" required>
                             </div>
                         </div>
 
                         {{-- Laboratory Upload (Optional) --}}
-                        <div class="pt-2" x-data="labUploader()">
+                        <div class="pt-2 relative opacity-60" x-data="labUploader()">
+                            <div class="absolute inset-0 z-10 cursor-not-allowed" onclick="showDoctorOnlyNotice('Laboratory Upload')"></div>
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-500 mb-1">Laboratory Upload (Optional)</label>
                                 <button type="button" @click="clearAll()" x-show="files.length > 0"
@@ -209,7 +227,8 @@
                                 <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">A</span>
                                 <label class="text-xs font-bold text-gray-700 uppercase">Assessment / Diagnosis</label>
                             </div>
-                            <textarea name="diagnosis" rows="2" required placeholder="Medical assessment..." class="w-full px-4 py-3 rounded-xl border-2 border-blue-50 bg-blue-50/10 text-sm outline-none">{{ old('diagnosis') }}</textarea>
+                            <textarea rows="2" readonly onclick="showDoctorOnlyNotice('Assessment / Diagnosis')" placeholder="Only doctor can fill this out"
+                                class="w-full px-4 py-3 rounded-xl border-2 border-blue-50 bg-gray-50 text-sm text-gray-500 outline-none cursor-not-allowed">Only doctor can fill this out.</textarea>
                         </div>
 
                         {{-- P - Plan / Medicines --}}
@@ -219,9 +238,14 @@
                                     <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">P</span>
                                     <label class="text-xs font-bold text-gray-700 uppercase">Plan / Medicines</label>
                                 </div>
-                                <button type="button" id="add-medicine-btn" class="text-blue-600 hover:text-blue-800 text-[10px] font-bold tracking-widest">+ ADD ITEM</button>
+                                <button type="button" id="add-medicine-btn" onclick="showDoctorOnlyNotice('Plan / Medicines')"
+                                    class="text-gray-400 text-[10px] font-bold tracking-widest cursor-not-allowed">+ ADD ITEM</button>
                             </div>
-                            <div id="medicine-rows-container" class="space-y-3"></div>
+                            <div id="medicine-rows-container" class="space-y-3">
+                                <div class="p-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">
+                                    Only doctor can fill Plan / Medicines.
+                                </div>
+                            </div>
                         </div>
 
                         <div class="pt-6 flex gap-4">
@@ -371,14 +395,72 @@
         }
     }
 
+    function showDoctorOnlyNotice(sectionName) {
+        const existing = document.getElementById('doctor-only-alert');
+        if (existing) existing.remove();
+
+        const alert = document.createElement('div');
+        alert.id = 'doctor-only-alert';
+        alert.className = 'fixed top-5 right-5 z-[9999] bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold';
+        alert.textContent = `${sectionName} can only be filled out by a Doctor.`;
+        document.body.appendChild(alert);
+
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            alert.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => alert.remove(), 300);
+        }, 2200);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Trigger initial calculations if values exist (e.g., after validation error)
         if(document.getElementById('birthday').value) calculateAge();
         if(document.getElementById('weight').value && document.getElementById('height').value) calculateBMI();
 
+        const addressSelect = document.getElementById('address_select');
+        const addressNewInput = document.getElementById('address_new_input');
+        const showNewAddressBtn = document.getElementById('show_new_address_btn');
+        const addressHidden = document.getElementById('address_purok_hidden');
+
+        function syncAddressHidden() {
+            if (addressSelect.value === '__new__') {
+                addressNewInput.classList.remove('hidden');
+                showNewAddressBtn.classList.add('hidden');
+                addressHidden.value = (addressNewInput.value || '').trim();
+            } else {
+                addressNewInput.classList.add('hidden');
+                showNewAddressBtn.classList.remove('hidden');
+                addressHidden.value = (addressSelect.value || '').trim();
+            }
+        }
+
+        // Hydrate old value after validation error.
+        if (addressHidden.value) {
+            let matched = false;
+            for (const option of addressSelect.options) {
+                if (option.value && option.value !== '__new__' && option.value.toLowerCase() === addressHidden.value.toLowerCase()) {
+                    addressSelect.value = option.value;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) {
+                addressSelect.value = '__new__';
+                addressNewInput.value = addressHidden.value;
+            }
+        }
+        syncAddressHidden();
+
+        addressSelect.addEventListener('change', syncAddressHidden);
+        addressNewInput.addEventListener('input', syncAddressHidden);
+        showNewAddressBtn.addEventListener('click', function () {
+            addressSelect.value = '__new__';
+            syncAddressHidden();
+            addressNewInput.focus();
+        });
+
         const container = document.getElementById('medicine-rows-container');
         const addBtn = document.getElementById('add-medicine-btn');
-        let rowIndex = 0;
         const allMedicines = JSON.parse(document.getElementById('medicine-data').dataset.list || '[]');
 
         function createMedicineRow() {
@@ -405,14 +487,18 @@
 
             container.appendChild(div);
             $(div).find('.med-select').select2({ width: '100%' });
-            rowIndex++;
         }
 
         $(document).on('click', '.remove-row', function() {
             $(this).closest('.medicine-row').remove();
         });
 
-        addBtn.addEventListener('click', createMedicineRow);
+        // Keep function available but BHW button is intentionally locked.
+        if (addBtn) {
+            addBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+            });
+        }
     });
 </script>
 @endsection

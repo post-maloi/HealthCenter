@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $role = auth()->user()->role ?? 'bhw';
+    $isNurse = $role === 'nurse';
+@endphp
 {{-- 1. ADD SELECT2 DEPENDENCIES --}}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -58,6 +62,16 @@
                 <option value="senior">Seniors (60+ years)</option>
             </select>
 
+            <select id="genderFilter" class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm cursor-pointer">
+                <option value="all">All Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+            </select>
+
+            <select id="addressFilter" class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm cursor-pointer min-w-[180px]">
+                <option value="all">All Address</option>
+            </select>
+
             <div class="relative flex-grow md:flex-grow-0">
                 <input type="text" id="searchInput" placeholder="Search patients..." 
                     class="pl-10 pr-4 py-2.5 w-full md:w-64 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm">
@@ -90,7 +104,9 @@
                 @endphp
                 <tr class="hover:bg-blue-50/30 transition patient-row" 
                     data-age-years="{{ $ageYears }}" 
-                    data-age-months="{{ $ageMonths }}">
+                    data-age-months="{{ $ageMonths }}"
+                    data-gender="{{ strtolower($record->gender) }}"
+                    data-address="{{ strtolower(trim($record->address_purok)) }}">
                     
                     <td class="px-6 py-4 text-sm text-gray-600 font-medium">
                         {{ \Carbon\Carbon::parse($record->consultation_date)->format('M d, Y') }}
@@ -114,10 +130,17 @@
                     </td>
                     
                     <td class="px-6 py-4 text-sm text-gray-600">{{ $record->address_purok }}</td>
-                    <td class="px-6 py-4 text-sm text-gray-600 italic">"{{ Str::limit($record->diagnosis, 30) }}"</td>
+                    <td class="px-6 py-4 text-sm text-gray-600 italic">
+                        @if(trim((string) $record->diagnosis) === 'For doctor assessment')
+                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">waiting_for_doctor</span>
+                        @else
+                            <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wide">completed</span>
+                        @endif
+                    </td>
                     
                     <td class="px-6 py-4 text-right">
                         <div class="flex justify-end gap-3">
+                            @if(!$isNurse)
                             <button type="button" 
                                     data-record='{!! json_encode($record) !!}'
                                     onclick="handleOpenModal(this)"
@@ -126,6 +149,7 @@
                                     <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                                 </svg>
                             </button>
+                            @endif
 
                             <a href="{{ route('record.show', $record->id) }}" 
                                class="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-800 hover:text-white transition-all shadow-sm">
@@ -137,7 +161,7 @@
 
                             <a href="{{ route('record.edit', $record->id) }}"
                                class="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                               title="Edit Entry">
+                               title="{{ $isNurse ? 'Add vitals and triage' : 'Edit Entry' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M17.414 2.586a2 2 0 010 2.828l-8.5 8.5a1 1 0 01-.39.242l-3 1a1 1 0 01-1.265-1.265l1-3a1 1 0 01.242-.39l8.5-8.5a2 2 0 012.828 0z"/>
                                     <path d="M5 16a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1z"/>
@@ -154,6 +178,14 @@
     </div>
     <div id="recordsPagination" class="mt-4"></div>
 </div>
+
+@if(!$isNurse)
+<a href="{{ route('record.create') }}"
+   class="fixed bottom-8 right-8 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700">
+    <span class="text-base leading-none">+</span>
+    Add New Consultation
+</a>
+@endif
 
 {{-- MODAL SECTION --}}
 <div id="quickAddModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
@@ -220,14 +252,12 @@
                             <textarea name="objective" rows="2" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition text-sm" placeholder="Findings from physical examination..."></textarea>
                         </div>
 
-                        {{-- DIAGNOSIS --}}
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Diagnosis / Assessment</label>
-                            <textarea name="diagnosis" rows="2" required class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition text-sm" placeholder="What is the diagnosis?"></textarea>
-                        </div>
+                        {{-- BHW: diagnosis is reserved for doctor --}}
+                        <input type="hidden" name="diagnosis" value="For doctor assessment">
 
-                        {{-- LABORATORY UPLOAD (Optional) --}}
-                        <div x-data="labUploader()" class="pt-1">
+                        {{-- LABORATORY UPLOAD (Doctor only in full module) --}}
+                        <div x-data="labUploader()" class="pt-1 opacity-60">
+                            <div class="absolute inset-0 z-10 cursor-not-allowed"></div>
                             <div class="flex items-center justify-between">
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Laboratory Upload (Optional)</label>
                                 <button type="button" @click="clearAll()" x-show="files.length > 0"
@@ -301,16 +331,20 @@
                             </template>
                         </div>
                         
-                        {{-- MEDICINES --}}
-                        <div>
+                        {{-- MEDICINES (Doctor only in full module) --}}
+                        <div class="opacity-60">
                             <div class="flex justify-between items-center mb-3">
                                 <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Medicines Given</label>
-                                <button type="button" onclick="createMedicineRow()" class="text-blue-600 text-[10px] font-bold hover:text-blue-800 transition uppercase tracking-widest">+ Add Item</button>
+                                <button type="button" class="text-gray-400 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed">+ Add Item</button>
                             </div>
                             <p class="mb-2 ml-1 text-[10px] text-amber-600 font-semibold uppercase tracking-wide">
                                 Dispensing uses earliest expiry first (FEFO).
                             </p>
-                            <div id="medicine-rows-container" class="space-y-3"></div>
+                            <div id="medicine-rows-container" class="space-y-3">
+                                <div class="p-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">
+                                    Doctor completes prescription on Wednesday.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -431,6 +465,8 @@ const recordRows = Array.from(document.querySelectorAll('#recordsTableBody .pati
         name: patientNameElement ? patientNameElement.innerText.toLowerCase() : '',
         years: parseInt(row.getAttribute('data-age-years') || '0', 10),
         months: parseInt(row.getAttribute('data-age-months') || '0', 10),
+        gender: (row.getAttribute('data-gender') || '').toLowerCase(),
+        address: (row.getAttribute('data-address') || '').toLowerCase(),
     };
 });
 
@@ -456,17 +492,21 @@ function renderRecordPagination(filteredRows) {
 // Search & Filter Logic
 function applyFilters() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const filter = document.getElementById('ageFilter').value;
+    const ageFilter = document.getElementById('ageFilter').value;
+    const genderFilter = document.getElementById('genderFilter').value;
+    const addressFilter = document.getElementById('addressFilter').value;
     const filtered = recordRows.filter((row) => {
         const matchesSearch = row.name.includes(searchTerm);
         let matchesAge = false;
+        const matchesGender = genderFilter === 'all' ? true : row.gender === genderFilter;
+        const matchesAddress = addressFilter === 'all' ? true : row.address === addressFilter;
 
-        if (filter === 'all') matchesAge = true;
-        else if (filter === '0-11' && row.years === 0 && row.months <= 11) matchesAge = true;
-        else if (filter === '12-59' && (row.years >= 1 && row.years < 5)) matchesAge = true;
-        else if (filter === 'senior' && row.years >= 60) matchesAge = true;
+        if (ageFilter === 'all') matchesAge = true;
+        else if (ageFilter === '0-11' && row.years === 0 && row.months <= 11) matchesAge = true;
+        else if (ageFilter === '12-59' && (row.years >= 1 && row.years < 5)) matchesAge = true;
+        else if (ageFilter === 'senior' && row.years >= 60) matchesAge = true;
 
-        return matchesSearch && matchesAge;
+        return matchesSearch && matchesAge && matchesGender && matchesAddress;
     });
 
     renderRecordPagination(filtered);
@@ -474,7 +514,17 @@ function applyFilters() {
 
 document.getElementById('searchInput').addEventListener('keyup', applyFilters);
 document.getElementById('ageFilter').addEventListener('change', applyFilters);
+document.getElementById('genderFilter').addEventListener('change', applyFilters);
+document.getElementById('addressFilter').addEventListener('change', applyFilters);
 document.addEventListener('DOMContentLoaded', function () {
+    const addressFilter = document.getElementById('addressFilter');
+    const uniqueAddresses = [...new Set(recordRows.map(item => item.address).filter(Boolean))].sort();
+    uniqueAddresses.forEach((address) => {
+        const opt = document.createElement('option');
+        opt.value = address;
+        opt.textContent = address.toUpperCase();
+        addressFilter.appendChild(opt);
+    });
     renderRecordPagination(recordRows);
 });
 

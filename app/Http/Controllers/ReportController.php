@@ -26,6 +26,8 @@ class ReportController extends Controller
     {
         $search = $request->get('search');
         $ageGroup = $request->get('age_group', 'all');
+        $gender = strtolower((string) $request->get('gender', 'all'));
+        $address = $request->get('address', 'all');
 
         $patientsQuery = ClinicRecord::whereIn('id', function ($query) {
             $query->selectRaw('MAX(id)')
@@ -40,14 +42,31 @@ class ReportController extends Controller
                         ->orWhere('address_purok', 'like', "%{$search}%");
                 });
             })
+            ->when($gender !== 'all', function ($query) use ($gender) {
+                $query->whereRaw('LOWER(gender) = ?', [$gender]);
+            })
+            ->when($address !== 'all', function ($query) use ($address) {
+                $query->where('address_purok', $address);
+            })
             ->orderBy('consultation_date', 'desc');
 
         $patients = $this->applyAgeGroupFilter($patientsQuery, $ageGroup === 'all' ? null : $ageGroup)->get();
+        $addressOptions = ClinicRecord::query()
+            ->whereNotNull('address_purok')
+            ->where('address_purok', '!=', '')
+            ->select('address_purok')
+            ->distinct()
+            ->orderBy('address_purok')
+            ->pluck('address_purok')
+            ->values();
 
         return view('reports.patient', [
             'patients' => $patients,
             'search' => $search,
             'ageGroup' => $ageGroup,
+            'gender' => $gender,
+            'address' => $address,
+            'addressOptions' => $addressOptions,
         ]);
     }
 
@@ -55,6 +74,8 @@ class ReportController extends Controller
     {
         $search = $request->get('search');
         $ageGroup = $request->get('age_group', 'all');
+        $gender = strtolower((string) $request->get('gender', 'all'));
+        $address = $request->get('address', 'all');
 
         $patientsQuery = ClinicRecord::whereIn('id', function ($query) {
             $query->selectRaw('MAX(id)')
@@ -68,6 +89,12 @@ class ReportController extends Controller
                         ->orWhere('middle_name', 'like', "%{$search}%")
                         ->orWhere('address_purok', 'like', "%{$search}%");
                 });
+            })
+            ->when($gender !== 'all', function ($query) use ($gender) {
+                $query->whereRaw('LOWER(gender) = ?', [$gender]);
+            })
+            ->when($address !== 'all', function ($query) use ($address) {
+                $query->where('address_purok', $address);
             })
             ->orderBy('consultation_date', 'desc');
 

@@ -35,7 +35,9 @@
             
             @php
                 $role = auth()->check() ? (auth()->user()->role ?? 'bhw') : 'guest';
-                $isDoctor = $role === 'doctor';
+                $isDoctor = in_array($role, ['doctor', 'nurse'], true);
+                $isNurse = $role === 'nurse';
+                $isBhw = $role === 'bhw';
             @endphp
 
             <nav class="mt-6 flex-1 px-4 space-y-1">
@@ -50,15 +52,15 @@
                    class="block py-3 px-4 rounded-lg transition {{ $isDoctor ? (request()->routeIs('doctor.record.*') && !request()->routeIs('doctor.record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') : (request()->routeIs('record.*') && !request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') }}">
                     Clinic Records
                 </a>
+
+                <a href="{{ route('medicines.index') }}"
+                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                    Inventory Medicine
+                </a>
                 
                 @unless($isDoctor)
-                    {{-- Inventory Medicine --}}
-                    <a href="{{ route('medicines.index') }}" 
-                       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                        Inventory Medicine
-                    </a>
-
                     {{-- Reports Dropdown --}}
+                    @if($isBhw)
                     <div class="pt-1">
                         <button type="button"
                             onclick="toggleReportsMenu()"
@@ -79,15 +81,20 @@
                             </a>
                         </div>
                     </div>
+                    @endif
+
+                    <div class="pt-4 mt-4 border-t border-slate-800">
+                        <a href="{{ $isNurse ? route('record.index') : route('record.create') }}" 
+                           class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            @if($isNurse)
+                                <span class="mr-2 text-blue-500 font-bold">+</span> Nurse Vitals / Triage
+                            @else
+                                <span class="mr-2 text-blue-500 font-bold">+</span> Add New Consultation
+                            @endif
+                        </a>
+                    </div>
                 @endunless
 
-                <div class="pt-4 mt-4 border-t border-slate-800">
-                    {{-- Add New Consultation --}}
-                    <a href="{{ $isDoctor ? route('doctor.record.index') : route('record.create') }}" 
-                       class="block py-3 px-4 rounded-lg transition {{ $isDoctor ? (request()->routeIs('doctor.record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') : (request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') }}">
-                        <span class="mr-2 text-blue-500 font-bold">+</span> Add New Consultation
-                    </a>
-                </div>
             </nav>
 
             <div class="p-4 border-t border-slate-800">

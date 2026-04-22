@@ -257,6 +257,21 @@
                         <p class="text-gray-400 font-bold uppercase text-xs tracking-widest">No medications prescribed.</p>
                     </div>
                 @endif
+
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Previous Consulted By</p>
+                        <p class="text-sm font-bold text-gray-700 uppercase">{{ $record->consulted_by ?: '—' }}</p>
+                    </div>
+                    <div class="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                        <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Current Consulted By</p>
+                        <p class="text-sm font-bold text-blue-700 uppercase">{{ $record->doctor_consulted_by ?: ($record->consulted_by ?: '—') }}</p>
+                    </div>
+                </div>
+                <div class="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Medicine Dispensed By</p>
+                    <p class="text-sm font-bold text-emerald-700 uppercase">{{ $record->doctor_consulted_by ?: ($record->consulted_by ?: '—') }}</p>
+                </div>
             </div>
         </div>
     </div>

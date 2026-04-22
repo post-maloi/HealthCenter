@@ -8,11 +8,27 @@ use App\Models\Medicine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class DoctorClinicRecordController extends Controller
 {
+    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
+
+    private function ensureDoctorSchedule(): void
+    {
+        if ((Auth::user()->role ?? null) === 'doctor' && !now()->isWednesday()) {
+            throw new AuthorizationException('Doctor module is available only every Wednesday.');
+        }
+    }
+
+    private function currentRole(): string
+    {
+        return (string) (Auth::user()->role ?? 'doctor');
+    }
+
     private function normalizeMedicineName(string $name): string
     {
         $name = preg_replace('/\s+/', ' ', trim($name));
@@ -46,6 +62,8 @@ class DoctorClinicRecordController extends Controller
 
     public function dashboard()
     {
+        $this->ensureDoctorSchedule();
+
         $totalPatients = ClinicRecord::select('first_name', 'last_name', 'birthday')
             ->groupBy('first_name', 'last_name', 'birthday')
             ->get()
@@ -69,6 +87,7 @@ class DoctorClinicRecordController extends Controller
 
     public function index(Request $request)
     {
+        $this->ensureDoctorSchedule();
         $search = $request->get('search');
         $allMedicines = $this->getDispensableMedicinesForSelection();
 
@@ -95,6 +114,7 @@ class DoctorClinicRecordController extends Controller
 
     public function create(Request $request)
     {
+        $this->ensureDoctorSchedule();
         $allMedicines = $this->getDispensableMedicinesForSelection();
         $patientRecordId = $request->query('patient_record_id');
         if (!$patientRecordId) {
@@ -137,6 +157,7 @@ class DoctorClinicRecordController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->ensureDoctorSchedule();
         $validated = $request->validate([
             'patient_record_id' => 'required|exists:clinic_records,id',
             'consultation_date' => 'required|date',
@@ -180,9 +201,23 @@ class DoctorClinicRecordController extends Controller
             'weight' => $latest?->weight,
             'height' => $latest?->height,
             'bmi' => $latest?->bmi,
-            // Show/store the BHW who consulted the patient.
+            // Keep original encoder for continuity unless current user is nurse.
             'consulted_by' => $latest?->consulted_by,
         ];
+
+        if (Auth::check()) {
+            $actor = Auth::user();
+            $actorName = trim(implode(' ', array_filter([
+                $actor->first_name ?? null,
+                $actor->middle_name ?? null,
+                $actor->last_name ?? null,
+            ])));
+            if ($this->currentRole() === 'nurse') {
+                $payload['doctor_consulted_by'] = $actorName ? ('Nurse ' . $actorName) : null;
+            } else {
+                $payload['doctor_consulted_by'] = $actorName ? ('Dr. ' . $actorName) : null;
+            }
+        }
 
         DB::transaction(function () use ($request, $payload) {
             $record = ClinicRecord::create($payload);
@@ -278,8 +313,11 @@ class DoctorClinicRecordController extends Controller
             }
 
             if (!empty($dispensedSummary)) {
+                $dispensedBy = $this->currentRole() === 'nurse'
+                    ? ($payload['consulted_by'] ?? 'Nurse')
+                    : ($payload['doctor_consulted_by'] ?? 'Doctor');
                 $record->update([
-                    'medicines_given' => implode(', ', $dispensedSummary),
+                    'medicines_given' => implode(', ', $dispensedSummary) . ' | Dispensed by: ' . $dispensedBy,
                 ]);
             }
         });
@@ -289,6 +327,7 @@ class DoctorClinicRecordController extends Controller
 
     public function show($id)
     {
+        $this->ensureDoctorSchedule();
         $record = ClinicRecord::with(['medicines', 'laboratoryFiles'])->findOrFail($id);
 
         $history = ClinicRecord::with('laboratoryFiles')

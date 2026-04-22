@@ -7,7 +7,7 @@
             <h1 class="text-3xl font-bold text-gray-800">Patient Report</h1>
             <p class="text-gray-500 text-sm mt-1">Unique patient list and latest consultation details</p>
         </div>
-        <a href="{{ route('reports.patients.export', ['search' => $search, 'age_group' => $ageGroup]) }}"
+        <a href="{{ route('reports.patients.export', ['search' => $search, 'age_group' => $ageGroup, 'gender' => $gender, 'address' => $address]) }}"
             class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition">
             Export Excel
         </a>
@@ -22,6 +22,19 @@
                     <option value="0-11" {{ $ageGroup === '0-11' ? 'selected' : '' }}>Infants (0-11 months)</option>
                     <option value="12-59" {{ $ageGroup === '12-59' ? 'selected' : '' }}>Children (12-59 months)</option>
                     <option value="senior" {{ $ageGroup === 'senior' ? 'selected' : '' }}>Seniors (60+ years)</option>
+                </select>
+                <select id="gender_filter" name="gender"
+                    class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm cursor-pointer">
+                    <option value="all" {{ $gender === 'all' ? 'selected' : '' }}>All Gender</option>
+                    <option value="male" {{ $gender === 'male' ? 'selected' : '' }}>Male</option>
+                    <option value="female" {{ $gender === 'female' ? 'selected' : '' }}>Female</option>
+                </select>
+                <select id="address_filter" name="address"
+                    class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500 outline-none shadow-sm cursor-pointer min-w-[180px]">
+                    <option value="all" {{ $address === 'all' ? 'selected' : '' }}>All Address</option>
+                    @foreach(($addressOptions ?? []) as $addressOption)
+                        <option value="{{ $addressOption }}" {{ $address === $addressOption ? 'selected' : '' }}>{{ strtoupper($addressOption) }}</option>
+                    @endforeach
                 </select>
                 <input type="text" name="search" value="{{ $search }}"
                     placeholder="Search patient name or address..."
@@ -90,10 +103,15 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const ageFilter = document.getElementById('age_group_filter');
+        const genderFilter = document.getElementById('gender_filter');
+        const addressFilter = document.getElementById('address_filter');
         if (!ageFilter || !ageFilter.form) return;
 
-        ageFilter.addEventListener('change', function () {
-            ageFilter.form.submit();
+        [ageFilter, genderFilter, addressFilter].forEach((filterEl) => {
+            if (!filterEl) return;
+            filterEl.addEventListener('change', function () {
+                ageFilter.form.submit();
+            });
         });
 
         const rows = Array.from(document.querySelectorAll('#patientReportTableBody .patient-report-row')).map(row => row.outerHTML);

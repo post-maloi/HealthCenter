@@ -4,7 +4,7 @@
 <div class="p-6 max-w-7xl mx-auto space-y-8">
     <div class="flex justify-between items-end">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800">Doctor Dashboard</h1>
+            <h1 class="text-3xl font-bold text-gray-800">{{ (auth()->user()->role ?? '') === 'nurse' ? 'Nurse Dashboard' : 'Doctor Dashboard' }}</h1>
             <p class="text-gray-500 mt-1 text-sm">Daily summary and consultations overview</p>
         </div>
         <div class="text-right hidden md:block">

@@ -3,12 +3,17 @@
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
-        <a href="{{ route('medicines.index') }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-2 mb-4 font-medium transition">
+        <div class="flex items-center gap-3 mb-4">
+        <a href="{{ route('medicines.index') }}" class="text-blue-600 hover:text-blue-800 flex items-center gap-2 font-medium transition">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Back to Inventory
         </a>
+        <a href="{{ route('medicines.index') }}" class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-bold hover:bg-blue-100 transition">
+            View
+        </a>
+        </div>
         <h1 class="text-3xl font-bold text-gray-800">Edit Medicine</h1>
         <p class="text-gray-500 mt-1">Update details for <span class="font-semibold text-slate-700">{{ $medicine->name }}</span>.</p>
     </div>

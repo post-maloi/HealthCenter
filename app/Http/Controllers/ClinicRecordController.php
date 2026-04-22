@@ -4,17 +4,35 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ClinicRecord; 
-use App\Models\ClinicRecordFile;
 use App\Models\Medicine;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
 
 class ClinicRecordController extends Controller
 {
+    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
+
+    private function currentRole(): string
+    {
+        return (string) (Auth::user()->role ?? 'bhw');
+    }
+
+    private function buildQueueLabel(?string $existingObjective = null): string
+    {
+        $todayCount = ClinicRecord::whereDate('consultation_date', Carbon::today())->count() + 1;
+        $queueLine = 'Queue No: ' . $todayCount;
+
+        if (!$existingObjective) {
+            return $queueLine;
+        }
+
+        return trim($existingObjective . PHP_EOL . $queueLine);
+    }
+
     private function normalizeMedicineName(string $name): string
     {
         $name = preg_replace('/\s+/', ' ', trim($name));
@@ -77,15 +95,29 @@ class ClinicRecordController extends Controller
     public function create()
     {
         $allMedicines = $this->getDispensableMedicinesForSelection();
+        $addressOptions = ClinicRecord::query()
+            ->whereNotNull('address_purok')
+            ->where('address_purok', '!=', '')
+            ->select('address_purok')
+            ->distinct()
+            ->orderBy('address_purok')
+            ->pluck('address_purok')
+            ->values();
 
         return view('record.create', [
             // Keep quick/full consultation medicine list consistent and non-duplicated.
-            'allMedicines' => $allMedicines
+            'allMedicines' => $allMedicines,
+            'addressOptions' => $addressOptions,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $role = $this->currentRole();
+        if ($role === 'nurse') {
+            throw new AuthorizationException('Nurse cannot create a new consultation record.');
+        }
+
         $validated = $request->validate([
             'last_name'         => 'required|string|max:255',
             'first_name'        => 'required|string|max:255',
@@ -96,7 +128,7 @@ class ClinicRecordController extends Controller
             'civil_status'      => 'required|string',
             'contact_number'    => 'nullable|string|max:50',
             'address_purok'     => 'required|string',
-            'diagnosis'         => 'required|string',
+            'diagnosis'         => 'nullable|string',
             'subjective'        => 'nullable|string',
             'objective'         => 'nullable|string',
             'temp'              => 'nullable|string',
@@ -128,106 +160,20 @@ class ClinicRecordController extends Controller
             $validated['age'] = round($validated['age']) . ' yrs';
         }
 
+        // BHW can only create patient + symptoms + queue; diagnosis/medications/lab are doctor-only.
+        $validated['diagnosis'] = self::DOCTOR_PLACEHOLDER_DIAGNOSIS;
+        $validated['temp'] = null;
+        $validated['bp'] = null;
+        $validated['pr'] = null;
+        $validated['rr'] = null;
+        $validated['weight'] = null;
+        $validated['height'] = null;
+        $validated['bmi'] = null;
+        $validated['objective'] = $this->buildQueueLabel($validated['objective'] ?? null);
+
         DB::transaction(function () use ($request, $validated) {
-            // Ensure vital signs are saved even if empty (preventing NULL issues)
             $record = ClinicRecord::create($validated);
-            $dispensedSummary = [];
-
-            if ($request->hasFile('laboratory_images')) {
-                foreach ($request->file('laboratory_images') as $file) {
-                    if (!$file || !$file->isValid()) {
-                        continue;
-                    }
-
-                    $path = $file->store('laboratories', 'public');
-                    ClinicRecordFile::create([
-                        'clinic_record_id' => $record->id,
-                        'path' => $path,
-                        'original_name' => $file->getClientOriginalName(),
-                        'size' => $file->getSize(),
-                    ]);
-                }
-            }
-
-            if ($request->has('medicines')) {
-                $requestedByMedicineKey = [];
-                $requestedLabelByMedicineKey = [];
-                $medicineIds = collect($request->medicines)
-                    ->pluck('id')
-                    ->filter()
-                    ->values();
-
-                $selectedMedicines = Medicine::whereIn('id', $medicineIds)->get()->keyBy('id');
-                $today = Carbon::today();
-                $allInStockLots = Medicine::where('stock', '>', 0)
-                    ->where(function ($query) use ($today) {
-                        $query->whereNull('expiration_date')
-                            ->orWhereDate('expiration_date', '>=', $today);
-                    })
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($request->medicines as $med) {
-                    if (empty($med['id']) || empty($med['quantity'])) {
-                        continue;
-                    }
-
-                    $selected = $selectedMedicines->get($med['id']);
-                    if (!$selected) {
-                        continue;
-                    }
-
-                    $medicineKey = $this->normalizeMedicineName((string) $selected->name);
-                    $requestedByMedicineKey[$medicineKey] = ($requestedByMedicineKey[$medicineKey] ?? 0) + (int) $med['quantity'];
-                    $requestedLabelByMedicineKey[$medicineKey] = $selected->name;
-                }
-
-                foreach ($requestedByMedicineKey as $medicineKey => $requestedQty) {
-                    if ($requestedQty <= 0) {
-                        continue;
-                    }
-
-                    // FEFO: dispense from the soonest expiration date first, grouped by normalized name.
-                    $lots = $allInStockLots
-                        ->filter(fn ($lot) => $this->normalizeMedicineName((string) $lot->name) === $medicineKey)
-                        ->sortBy([
-                            ['expiration_date', 'asc'],
-                            ['arrival_date', 'asc'],
-                        ])
-                        ->values();
-
-                    $availableStock = $lots->sum('stock');
-                    if ($availableStock < $requestedQty) {
-                        $medicineLabel = $requestedLabelByMedicineKey[$medicineKey] ?? 'Selected medicine';
-                        throw ValidationException::withMessages([
-                            'medicines' => "Insufficient stock for {$medicineLabel}. Requested {$requestedQty}, available {$availableStock}.",
-                        ]);
-                    }
-
-                    $remaining = $requestedQty;
-                    foreach ($lots as $lot) {
-                        if ($remaining <= 0) {
-                            break;
-                        }
-
-                        $take = min($remaining, (int) $lot->stock);
-                        if ($take <= 0) {
-                            continue;
-                        }
-
-                        $record->medicines()->attach($lot->id, ['quantity' => $take]);
-                        $dispensedSummary[] = "{$lot->name} (x{$take})";
-                        $lot->decrement('stock', $take);
-                        $remaining -= $take;
-                    }
-                }
-            }
-
-            if (!empty($dispensedSummary)) {
-                $record->update([
-                    'medicines_given' => implode(', ', $dispensedSummary),
-                ]);
-            }
+            $record->medicines()->detach();
         });
 
         return redirect()->route('record.index')->with('success', 'Record saved!');
@@ -274,6 +220,38 @@ class ClinicRecordController extends Controller
     public function update(Request $request, $id): RedirectResponse
     {
         $record = ClinicRecord::findOrFail($id);
+        $role = $this->currentRole();
+
+        if ($role === 'nurse') {
+            $validated = $request->validate([
+                'temp' => 'nullable|string|max:50',
+                'bp' => 'nullable|string|max:50',
+                'weight' => 'nullable|numeric',
+                'objective' => 'nullable|string',
+            ]);
+
+            $triage = trim((string) $request->input('triage'));
+            $monitoring = trim((string) $request->input('monitoring_notes'));
+            $objectiveParts = [];
+            if ($triage !== '') {
+                $objectiveParts[] = 'Triage: ' . $triage;
+            }
+            if ($monitoring !== '') {
+                $objectiveParts[] = 'Monitoring: ' . $monitoring;
+            }
+
+            $record->update([
+                'temp' => $validated['temp'] ?? null,
+                'bp' => $validated['bp'] ?? null,
+                'weight' => $validated['weight'] ?? null,
+                'objective' => !empty($objectiveParts)
+                    ? implode(PHP_EOL, $objectiveParts)
+                    : ($validated['objective'] ?? $record->objective),
+                'diagnosis' => self::DOCTOR_PLACEHOLDER_DIAGNOSIS,
+            ]);
+
+            return redirect()->route('record.show', $id)->with('success', 'Nurse updates saved. Status: waiting_for_doctor');
+        }
         
         $validated = $request->validate([
             'first_name'        => 'required|string|max:255',
@@ -285,7 +263,7 @@ class ClinicRecordController extends Controller
             'civil_status'      => 'required|string',
             'contact_number'    => 'nullable|string|max:50',
             'address_purok'     => 'required|string',
-            'diagnosis'         => 'required|string',
+            'diagnosis'         => 'nullable|string',
             'temp'              => 'nullable|string',
             'bp'                => 'nullable|string',
             'pr'                => 'nullable|string',
@@ -299,16 +277,10 @@ class ClinicRecordController extends Controller
 
         DB::transaction(function () use ($request, $record, $validated) {
             $validated['age'] = $this->formatAgeFromBirthday($validated['birthday']);
+            $validated['diagnosis'] = self::DOCTOR_PLACEHOLDER_DIAGNOSIS;
 
-            if ($request->has('medicines')) {
-                $syncData = [];
-                foreach ($request->medicines as $item) {
-                    if (!empty($item['id'])) {
-                        $syncData[$item['id']] = ['quantity' => $item['quantity'] ?? 1];
-                    }
-                }
-                $record->medicines()->sync($syncData);
-            }
+            // Prevent non-doctor edits from prescribing/dispensing via this route.
+            $record->medicines()->detach();
 
             $record->update($validated);
         });
