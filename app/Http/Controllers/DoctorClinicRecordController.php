@@ -4,25 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\ClinicRecord;
 use App\Models\ClinicRecordFile;
+use App\Models\InventoryLog;
 use App\Models\Medicine;
+use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Auth\Access\AuthorizationException;
 
 class DoctorClinicRecordController extends Controller
 {
-    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
-
-    private function ensureDoctorSchedule(): void
-    {
-        if ((Auth::user()->role ?? null) === 'doctor' && !now()->isWednesday()) {
-            throw new AuthorizationException('Doctor module is available only every Wednesday.');
-        }
-    }
+    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'waiting_for_doctor/nurse';
 
     private function currentRole(): string
     {
@@ -60,10 +55,35 @@ class DoctorClinicRecordController extends Controller
         return ($diff->y === 0) ? $diff->m . ' Mon' : $diff->y . ' yrs';
     }
 
+    private function hasAnyVital(ClinicRecord $record): bool
+    {
+        foreach (['temp', 'bp', 'pr', 'rr', 'weight', 'height', 'bmi'] as $field) {
+            $value = $record->{$field};
+            if (!is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function attachDisplayVitals(Collection $records): Collection
+    {
+        return $records->map(function (ClinicRecord $record) use ($records) {
+            $fallback = $records->first(fn (ClinicRecord $item) => $this->hasAnyVital($item));
+            foreach (['temp', 'bp', 'pr', 'rr', 'weight', 'height', 'bmi'] as $field) {
+                $current = $record->{$field};
+                $record->{"display_{$field}"} = (!is_null($current) && trim((string) $current) !== '' && strtoupper(trim((string) $current)) !== 'N/A')
+                    ? $current
+                    : ($fallback?->{$field} ?? null);
+            }
+
+            return $record;
+        });
+    }
+
     public function dashboard()
     {
-        $this->ensureDoctorSchedule();
-
         $totalPatients = ClinicRecord::select('first_name', 'last_name', 'birthday')
             ->groupBy('first_name', 'last_name', 'birthday')
             ->get()
@@ -82,12 +102,12 @@ class DoctorClinicRecordController extends Controller
             'todayConsultations' => $todayConsultations,
             'lowStockCount'      => $lowStockCount,
             'recentRecords'      => $recentRecords,
+            'isDoctorAvailable'  => (bool) (Auth::user()?->is_doctor_available),
         ]);
     }
 
     public function index(Request $request)
     {
-        $this->ensureDoctorSchedule();
         $search = $request->get('search');
         $allMedicines = $this->getDispensableMedicinesForSelection();
 
@@ -106,6 +126,8 @@ class DoctorClinicRecordController extends Controller
             ->orderBy('consultation_date', 'desc')
             ->get();
 
+        $records = $this->attachDisplayVitals($records);
+
         return view('doctor.record.index', [
             'records' => $records,
             'allMedicines' => $allMedicines,
@@ -114,7 +136,6 @@ class DoctorClinicRecordController extends Controller
 
     public function create(Request $request)
     {
-        $this->ensureDoctorSchedule();
         $allMedicines = $this->getDispensableMedicinesForSelection();
         $patientRecordId = $request->query('patient_record_id');
         if (!$patientRecordId) {
@@ -157,7 +178,6 @@ class DoctorClinicRecordController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $this->ensureDoctorSchedule();
         $validated = $request->validate([
             'patient_record_id' => 'required|exists:clinic_records,id',
             'consultation_date' => 'required|date',
@@ -307,6 +327,15 @@ class DoctorClinicRecordController extends Controller
                         $record->medicines()->attach($lot->id, ['quantity' => $take]);
                         $dispensedSummary[] = "{$lot->name} (x{$take})";
                         $lot->decrement('stock', $take);
+                        $lot->refresh();
+                        InventoryLog::create([
+                            'medicine_id' => $lot->id,
+                            'transaction_type' => 'stock_out',
+                            'quantity' => -$take,
+                            'balance_after' => (int) $lot->stock,
+                            'reference' => "Dispensed for consultation #{$record->id}",
+                            'created_by' => auth()->id(),
+                        ]);
                         $remaining -= $take;
                     }
                 }
@@ -320,6 +349,13 @@ class DoctorClinicRecordController extends Controller
                     'medicines_given' => implode(', ', $dispensedSummary) . ' | Dispensed by: ' . $dispensedBy,
                 ]);
             }
+
+            ActivityLogger::log(
+                'consultation_saved',
+                "Doctor consultation saved for {$record->first_name} {$record->last_name}",
+                $record,
+                $request
+            );
         });
 
         return redirect()->route('doctor.record.index')->with('success', 'Record saved!');
@@ -327,7 +363,6 @@ class DoctorClinicRecordController extends Controller
 
     public function show($id)
     {
-        $this->ensureDoctorSchedule();
         $record = ClinicRecord::with(['medicines', 'laboratoryFiles'])->findOrFail($id);
 
         $history = ClinicRecord::with('laboratoryFiles')
@@ -337,10 +372,33 @@ class DoctorClinicRecordController extends Controller
             ->orderBy('consultation_date', 'desc')
             ->get();
 
+        $history = $this->attachDisplayVitals($history);
+        $record = $this->attachDisplayVitals(collect([$record]))->first();
+
         return view('doctor.record.show', [
             'record' => $record,
             'history' => $history,
         ]);
+    }
+
+    public function toggleAvailability(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        if (!$user || $user->role !== 'doctor') {
+            abort(403);
+        }
+
+        $newState = !$user->is_doctor_available;
+        $user->update(['doctor_availability_override' => $newState]);
+
+        ActivityLogger::log(
+            'doctor_availability_toggled',
+            'Doctor set availability to ' . ($newState ? 'Active' : 'Inactive'),
+            $user,
+            $request
+        );
+
+        return back()->with('success', 'Availability updated to ' . ($newState ? 'Active' : 'Inactive') . '.');
     }
 }
 

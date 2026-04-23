@@ -6,6 +6,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\DoctorClinicRecordController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\InventoryController as AdminInventoryController;
+use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ClinicRecord;
@@ -34,6 +40,10 @@ Route::middleware('auth')->group(function () {
     // Keep /dashboard as a single entry point and redirect based on role.
     Route::get('/dashboard', function () {
         $role = Auth::user()->role ?? 'bhw';
+        if ($role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
         if (in_array($role, ['doctor', 'nurse'], true)) {
             return redirect()->route('doctor.dashboard');
         }
@@ -60,23 +70,23 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     // --- CLINIC RECORDS & APPOINTMENTS ---
-    Route::middleware('role:bhw,nurse,doctor')->group(function () {
+    Route::middleware('role:admin,bhw,nurse,doctor')->group(function () {
         Route::prefix('record')->name('record.')->group(function () {
-            Route::get('/create', [ClinicRecordController::class, 'create'])->name('create')->middleware('role:bhw');
-            Route::post('/store', [ClinicRecordController::class, 'store'])->name('store')->middleware('role:bhw');
-            Route::post('/quick-add', [ClinicRecordController::class, 'quickStore'])->name('quickStore')->middleware('role:bhw');
+            Route::get('/create', [ClinicRecordController::class, 'create'])->name('create')->middleware('role:admin,bhw');
+            Route::post('/store', [ClinicRecordController::class, 'store'])->name('store')->middleware('role:admin,bhw');
+            Route::post('/quick-add', [ClinicRecordController::class, 'quickStore'])->name('quickStore')->middleware('role:admin,bhw');
             Route::get('/{id}/edit', [ClinicRecordController::class, 'edit'])->name('edit');
         });
 
         // Resources
         Route::resource('record', ClinicRecordController::class)->except(['create', 'store', 'edit']);
-        Route::resource('medicines', MedicineController::class)->middleware('role:bhw,doctor,nurse');
+        Route::resource('medicines', MedicineController::class)->middleware('role:admin,bhw,doctor,nurse');
     
         // Medicines - Custom Group Delete
-        Route::delete('/medicines-destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group')->middleware('role:bhw,doctor,nurse');
+        Route::delete('/medicines-destroy-group', [MedicineController::class, 'destroyGroup'])->name('medicines.destroy_group')->middleware('role:admin,bhw,doctor,nurse');
 
         // Reports
-        Route::prefix('reports')->name('reports.')->middleware('role:bhw')->group(function () {
+        Route::prefix('reports')->name('reports.')->middleware('role:admin,bhw')->group(function () {
             Route::get('/patients', [ReportController::class, 'patient'])->name('patients');
             Route::get('/patients/export', [ReportController::class, 'exportPatientExcel'])->name('patients.export');
             Route::get('/diagnosis', [ReportController::class, 'diagnosis'])->name('diagnosis');
@@ -89,6 +99,7 @@ Route::middleware('auth')->group(function () {
     // --- DOCTOR AREA ---
     Route::prefix('doctor')->name('doctor.')->middleware('role:doctor,nurse')->group(function () {
         Route::get('/dashboard', [DoctorClinicRecordController::class, 'dashboard'])->name('dashboard');
+        Route::post('/availability/toggle', [DoctorClinicRecordController::class, 'toggleAvailability'])->name('availability.toggle')->middleware('role:doctor');
 
         Route::get('/patient/{id}', [DoctorClinicRecordController::class, 'patientInfo'])->name('patient.info');
 
@@ -102,4 +113,24 @@ Route::middleware('auth')->group(function () {
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // --- ADMIN CONTROL CENTER ---
+    Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+        Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
+        Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
+        Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}/status', [UserManagementController::class, 'toggleStatus'])->name('users.status');
+        Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])->name('users.reset-password');
+
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+        Route::get('/inventory/ledger', [AdminInventoryController::class, 'ledger'])->name('inventory.ledger');
+        Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
+    });
 });

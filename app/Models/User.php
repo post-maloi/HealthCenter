@@ -22,9 +22,12 @@ class User extends Authenticatable
     'first_name',
     'middle_name',
     'last_name',
+    'suffix',
     'email',
     'password',
     'role',
+    'is_active',
+    'doctor_availability_override',
 ];
 
     /**
@@ -47,6 +50,52 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
+            'doctor_availability_override' => 'boolean',
         ];
+    }
+
+    public function getFullNameAttribute(): string
+    {
+        $legacyName = (string) ($this->attributes['name'] ?? '');
+        if (trim($legacyName) !== '' && !$this->first_name && !$this->last_name) {
+            return trim($legacyName);
+        }
+
+        return trim(implode(' ', array_filter([
+            $this->first_name,
+            $this->middle_name,
+            $this->last_name,
+            $this->suffix,
+        ])));
+    }
+
+    public function getFormalNameAttribute(): string
+    {
+        $legacyName = (string) ($this->attributes['name'] ?? '');
+        if (trim($legacyName) !== '' && !$this->first_name && !$this->last_name) {
+            return trim($legacyName);
+        }
+
+        $middleInitial = $this->middle_name ? strtoupper(substr((string) $this->middle_name, 0, 1)) . '.' : '';
+
+        return trim(implode(' ', array_filter([
+            trim(implode(', ', array_filter([$this->last_name, $this->first_name]))),
+            $middleInitial,
+            $this->suffix,
+        ])));
+    }
+
+    public function getIsDoctorAvailableAttribute(): bool
+    {
+        if ($this->role !== 'doctor') {
+            return false;
+        }
+
+        if ($this->doctor_availability_override !== null) {
+            return (bool) $this->doctor_availability_override;
+        }
+
+        return now()->isWednesday();
     }
 }

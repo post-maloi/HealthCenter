@@ -88,26 +88,20 @@
                             </div>
 
                             <div class="col-span-2">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Cellphone Number</label>
+                                <input type="text" name="contact_number" value="{{ old('contact_number') }}" placeholder="09XXXXXXXXX"
+                                    class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none">
+                            </div>
+
+                            <div class="col-span-2">
                                 <label class="block text-xs font-bold text-gray-500 mb-1">Address / Purok</label>
-                                <div class="space-y-2">
-                                    <select id="address_select"
-                                        class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
-                                        <option value="" disabled selected>Select address</option>
-                                        @foreach(($addressOptions ?? []) as $address)
-                                            <option value="{{ $address }}">{{ $address }}</option>
-                                        @endforeach
-                                        <option value="__new__">+ Add new address...</option>
-                                    </select>
-                                    <div class="flex items-center gap-2">
-                                        <input type="text" id="address_new_input" placeholder="Type new address / purok"
-                                            class="hidden w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
-                                        <button type="button" id="show_new_address_btn"
-                                            class="px-3 py-2 rounded-lg border border-blue-200 text-blue-600 text-xs font-bold uppercase tracking-wide hover:bg-blue-50 transition">
-                                            Add New
-                                        </button>
-                                    </div>
-                                </div>
-                                <input type="hidden" name="address_purok" id="address_purok_hidden" value="{{ old('address_purok') }}" required>
+                                <select id="address_purok_select" name="address_purok" required
+                                    class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:border-blue-400 outline-none uppercase">
+                                    <option value="" disabled {{ old('address_purok') ? '' : 'selected' }}>Select address</option>
+                                    @foreach (['BAYANIHAN', 'TABUNON', 'GABI', 'BALAANONG TUBIG', 'BALAHAN', 'RIBOMA', 'PAG-ASA', 'PUROK-ANO'] as $address)
+                                        <option value="{{ $address }}" {{ old('address_purok') === $address ? 'selected' : '' }}>{{ $address }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
 
@@ -417,51 +411,15 @@
         if(document.getElementById('birthday').value) calculateAge();
         if(document.getElementById('weight').value && document.getElementById('height').value) calculateBMI();
 
-        const addressSelect = document.getElementById('address_select');
-        const addressNewInput = document.getElementById('address_new_input');
-        const showNewAddressBtn = document.getElementById('show_new_address_btn');
-        const addressHidden = document.getElementById('address_purok_hidden');
-
-        function syncAddressHidden() {
-            if (addressSelect.value === '__new__') {
-                addressNewInput.classList.remove('hidden');
-                showNewAddressBtn.classList.add('hidden');
-                addressHidden.value = (addressNewInput.value || '').trim();
-            } else {
-                addressNewInput.classList.add('hidden');
-                showNewAddressBtn.classList.remove('hidden');
-                addressHidden.value = (addressSelect.value || '').trim();
-            }
-        }
-
-        // Hydrate old value after validation error.
-        if (addressHidden.value) {
-            let matched = false;
-            for (const option of addressSelect.options) {
-                if (option.value && option.value !== '__new__' && option.value.toLowerCase() === addressHidden.value.toLowerCase()) {
-                    addressSelect.value = option.value;
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched) {
-                addressSelect.value = '__new__';
-                addressNewInput.value = addressHidden.value;
-            }
-        }
-        syncAddressHidden();
-
-        addressSelect.addEventListener('change', syncAddressHidden);
-        addressNewInput.addEventListener('input', syncAddressHidden);
-        showNewAddressBtn.addEventListener('click', function () {
-            addressSelect.value = '__new__';
-            syncAddressHidden();
-            addressNewInput.focus();
-        });
-
         const container = document.getElementById('medicine-rows-container');
         const addBtn = document.getElementById('add-medicine-btn');
         const allMedicines = JSON.parse(document.getElementById('medicine-data').dataset.list || '[]');
+
+        $('#address_purok_select').select2({
+            width: '100%',
+            placeholder: 'Select address',
+            allowClear: false
+        });
 
         function createMedicineRow() {
             const div = document.createElement('div');

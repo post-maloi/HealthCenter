@@ -64,6 +64,10 @@
                         <p class="text-[10px] font-bold text-gray-400 uppercase">Address</p>
                         <p class="font-bold text-gray-700 uppercase">{{ $record->address_purok }}</p>
                     </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase">Contact Number</p>
+                        <p class="font-bold text-gray-700">{{ $record->contact_number ?: 'N/A' }}</p>
+                    </div>
                 </div>
             </div>
 
@@ -104,6 +108,9 @@
                                         {{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}
                                     </p>
                                     <p class="text-[10px] text-gray-400 truncate">{{ $visit->diagnosis }}</p>
+                                    <p class="text-[10px] text-gray-500 mt-1">
+                                        T: {{ $visit->display_temp ?: '--' }} | BP: {{ $visit->display_bp ?: '--' }} | WT: {{ $visit->display_weight ?: '--' }}
+                                    </p>
                                 </div>
                             </div>
                         </a>
@@ -136,23 +143,23 @@
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">Temp</p>
                         <p class="text-xl font-black text-gray-800">
-                            {{ $hasValue($record->temp) ? $record->temp : '--' }}@if($hasValue($record->temp))<span class="text-xs">°C</span>@endif
+                            {{ $hasValue($record->display_temp ?? null) ? $record->display_temp : '--' }}@if($hasValue($record->display_temp ?? null))<span class="text-xs">°C</span>@endif
                         </p>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">BP</p>
-                        <p class="text-xl font-black text-gray-800">{{ $record->bp ?: '--' }}</p>
+                        <p class="text-xl font-black text-gray-800">{{ $record->display_bp ?: '--' }}</p>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">Pulse</p>
                         <p class="text-xl font-black text-gray-800">
-                            {{ $hasValue($record->pr) ? $record->pr : '--' }}@if($hasValue($record->pr))<span class="text-xs ml-1">bpm</span>@endif
+                            {{ $hasValue($record->display_pr ?? null) ? $record->display_pr : '--' }}@if($hasValue($record->display_pr ?? null))<span class="text-xs ml-1">bpm</span>@endif
                         </p>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">Resp</p>
                         <p class="text-xl font-black text-gray-800">
-                            {{ $hasValue($record->rr) ? $record->rr : '--' }}@if($hasValue($record->rr))<span class="text-xs ml-1">cpm</span>@endif
+                            {{ $hasValue($record->display_rr ?? null) ? $record->display_rr : '--' }}@if($hasValue($record->display_rr ?? null))<span class="text-xs ml-1">cpm</span>@endif
                         </p>
                     </div>
                 </div>
@@ -161,18 +168,18 @@
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">Weight</p>
                         <p class="text-lg font-black text-gray-800">
-                            {{ $hasValue($record->weight) ? $record->weight : '--' }}@if($hasValue($record->weight))<span class="text-xs text-gray-400 ml-1">kg</span>@endif
+                            {{ $hasValue($record->display_weight ?? null) ? $record->display_weight : '--' }}@if($hasValue($record->display_weight ?? null))<span class="text-xs text-gray-400 ml-1">kg</span>@endif
                         </p>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl text-center">
                         <p class="text-[10px] font-black text-gray-400 uppercase">Height</p>
                         <p class="text-lg font-black text-gray-800">
-                            {{ $hasValue($record->height) ? $record->height : '--' }}@if($hasValue($record->height))<span class="text-xs text-gray-400 ml-1">cm</span>@endif
+                            {{ $hasValue($record->display_height ?? null) ? $record->display_height : '--' }}@if($hasValue($record->display_height ?? null))<span class="text-xs text-gray-400 ml-1">cm</span>@endif
                         </p>
                     </div>
                     <div class="p-4 bg-blue-50 rounded-2xl text-center border border-blue-100">
                         <p class="text-[10px] font-black text-blue-400 uppercase">BMI</p>
-                        <p class="text-lg font-black text-blue-600">{{ $record->bmi ?: '--' }}</p>
+                        <p class="text-lg font-black text-blue-600">{{ $record->display_bmi ?: '--' }}</p>
                     </div>
                 </div>
 
@@ -267,10 +274,6 @@
                         <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Current Consulted By</p>
                         <p class="text-sm font-bold text-blue-700 uppercase">{{ $record->doctor_consulted_by ?: ($record->consulted_by ?: '—') }}</p>
                     </div>
-                </div>
-                <div class="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
-                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Medicine Dispensed By</p>
-                    <p class="text-sm font-bold text-emerald-700 uppercase">{{ $record->doctor_consulted_by ?: ($record->consulted_by ?: '—') }}</p>
                 </div>
             </div>
         </div>

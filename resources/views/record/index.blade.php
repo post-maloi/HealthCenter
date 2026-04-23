@@ -4,6 +4,8 @@
 @php
     $role = auth()->user()->role ?? 'bhw';
     $isNurse = $role === 'nurse';
+    $isDoctorRole = $role === 'doctor';
+    $isBhwRole = $role === 'bhw';
 @endphp
 {{-- 1. ADD SELECT2 DEPENDENCIES --}}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -91,7 +93,8 @@
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Patient Name</th>
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Age / Gender</th>
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Address</th>
-                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnosis</th>
+                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Latest Vitals</th>
+                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
                     <th class="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
             </thead>
@@ -130,9 +133,12 @@
                     </td>
                     
                     <td class="px-6 py-4 text-sm text-gray-600">{{ $record->address_purok }}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600">
+                        T: {{ $record->display_temp ?: '--' }} | BP: {{ $record->display_bp ?: '--' }} | WT: {{ $record->display_weight ?: '--' }}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-600 italic">
-                        @if(trim((string) $record->diagnosis) === 'For doctor assessment')
-                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">waiting_for_doctor</span>
+                        @if(in_array(trim((string) $record->diagnosis), ['For doctor assessment', 'waiting_for_doctor/nurse'], true))
+                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">pending</span>
                         @else
                             <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wide">completed</span>
                         @endif
@@ -171,7 +177,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>
+                <tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -179,7 +185,7 @@
     <div id="recordsPagination" class="mt-4"></div>
 </div>
 
-@if(!$isNurse)
+@if(!$isNurse && !$isDoctorRole && !$isBhwRole)
 <a href="{{ route('record.create') }}"
    class="fixed bottom-8 right-8 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700">
     <span class="text-base leading-none">+</span>
@@ -206,11 +212,7 @@
                 <input type="hidden" name="contact_number" id="modal_contact">
                 <input type="hidden" name="consultation_date" value="{{ now()->format('Y-m-d') }}">
 
-                {{-- Defaults for data not in "Quick Add" form --}}
-                <input type="hidden" name="subjective" value="Quick Consultation">
                 <input type="hidden" name="bmi" id="modal_bmi" value="N/A">
-                <input type="hidden" name="pr" value="N/A">
-                <input type="hidden" name="rr" value="N/A">
 
                 <div class="p-8">
                     <div class="flex justify-between items-center mb-6">
@@ -227,6 +229,11 @@
                     </div>
                     
                     <div class="space-y-6">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Subjective Findings</label>
+                            <textarea name="subjective" rows="2" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition text-sm" placeholder="Patient's complaints..."></textarea>
+                        </div>
+
                         {{-- VITALS GRID --}}
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-3 ml-1">Vital Signs</label>
@@ -243,6 +250,12 @@
                                 <div>
                                     <input type="text" name="height" id="quick_height" placeholder="Height (cm)" class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 text-sm">
                                 </div>
+                                <div>
+                                    <input type="text" name="pr" placeholder="PR (bpm)" class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 text-sm">
+                                </div>
+                                <div>
+                                    <input type="text" name="rr" placeholder="RR (cpm)" class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 text-sm">
+                                </div>
                             </div>
                         </div>
 
@@ -253,98 +266,12 @@
                         </div>
 
                         {{-- BHW: diagnosis is reserved for doctor --}}
-                        <input type="hidden" name="diagnosis" value="For doctor assessment">
+                        <input type="hidden" name="diagnosis" value="waiting_for_doctor/nurse">
 
-                        {{-- LABORATORY UPLOAD (Doctor only in full module) --}}
-                        <div x-data="labUploader()" class="pt-1 opacity-60">
-                            <div class="absolute inset-0 z-10 cursor-not-allowed"></div>
-                            <div class="flex items-center justify-between">
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Laboratory Upload (Optional)</label>
-                                <button type="button" @click="clearAll()" x-show="files.length > 0"
-                                    class="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition"
-                                    style="display:none;">
-                                    Clear
-                                </button>
-                            </div>
-
-                            <input
-                                x-ref="input"
-                                type="file"
-                                name="laboratory_images[]"
-                                multiple
-                                accept=".jpg,.jpeg,.png,.webp"
-                                class="hidden"
-                                @change="onPick($event)"
-                            >
-
-                            <div
-                                class="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-5 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition"
-                                @click="$refs.input.click()"
-                                @dragover.prevent="isDragging = true"
-                                @dragleave.prevent="isDragging = false"
-                                @drop.prevent="onDrop($event)"
-                                :class="isDragging ? 'border-blue-400 bg-blue-50/40' : ''"
-                            >
-                                <div class="flex flex-col items-center gap-2">
-                                    <div class="w-9 h-9 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M12 12v9m0-9l-3 3m3-3l3 3"/>
-                                        </svg>
-                                    </div>
-                                    <p class="text-sm font-bold text-gray-600">Drag files to upload</p>
-                                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">or</p>
-                                    <button type="button"
-                                        class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-blue-600 font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition">
-                                        Browse Files
-                                    </button>
-                                    <p class="text-[10px] text-gray-400 mt-1">
-                                        Max files: <span class="font-bold">5</span> • Max size: <span class="font-bold">5MB</span> each
-                                    </p>
-                                    <p class="text-[9px] text-gray-300 uppercase tracking-widest">JPG, PNG, WEBP only</p>
-                                </div>
-                            </div>
-
-                            <template x-if="errors.length > 0">
-                                <div class="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl">
-                                    <template x-for="(msg, idx) in errors" :key="idx">
-                                        <p class="text-[10px] font-bold text-red-600" x-text="msg"></p>
-                                    </template>
-                                </div>
-                            </template>
-
-                            <template x-if="files.length > 0">
-                                <div class="mt-4 space-y-2">
-                                    <template x-for="(f, idx) in files" :key="f.key">
-                                        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-                                            <img :src="f.preview" class="w-12 h-12 rounded-xl object-cover border border-gray-100" alt="Preview" />
-                                            <div class="min-w-0 flex-1">
-                                                <p class="text-xs font-black text-gray-700 truncate" x-text="f.name"></p>
-                                                <p class="text-[10px] text-gray-400" x-text="formatBytes(f.size)"></p>
-                                            </div>
-                                            <button type="button" class="w-9 h-9 rounded-xl bg-white border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 transition"
-                                                @click="removeAt(idx)" title="Remove">
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                        </div>
-                        
-                        {{-- MEDICINES (Doctor only in full module) --}}
-                        <div class="opacity-60">
-                            <div class="flex justify-between items-center mb-3">
-                                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Medicines Given</label>
-                                <button type="button" class="text-gray-400 text-[10px] font-bold uppercase tracking-widest cursor-not-allowed">+ Add Item</button>
-                            </div>
-                            <p class="mb-2 ml-1 text-[10px] text-amber-600 font-semibold uppercase tracking-wide">
-                                Dispensing uses earliest expiry first (FEFO).
+                        <div class="rounded-xl border border-dashed border-amber-200 bg-amber-50 p-3">
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                                Laboratory uploads and medicine dispensing are for doctor/nurse only.
                             </p>
-                            <div id="medicine-rows-container" class="space-y-3">
-                                <div class="p-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">
-                                    Doctor completes prescription on Wednesday.
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -476,7 +403,7 @@ function renderRecordPagination(filteredRows) {
             pagerSelector: '#recordsPagination',
             tableBodySelector: '#recordsTableBody',
             rows: [],
-            emptyRowHtml: '<tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
+            emptyRowHtml: '<tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
         });
         return;
     }
@@ -485,7 +412,7 @@ function renderRecordPagination(filteredRows) {
         pagerSelector: '#recordsPagination',
         tableBodySelector: '#recordsTableBody',
         rows: filteredRows.map(item => item.html),
-        emptyRowHtml: '<tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
+        emptyRowHtml: '<tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
     });
 }
 
@@ -528,45 +455,6 @@ document.addEventListener('DOMContentLoaded', function () {
     renderRecordPagination(recordRows);
 });
 
-// Medicine Logic
-const medicineDataElement = document.getElementById('medicine-data');
-const allMedicines = medicineDataElement ? JSON.parse(medicineDataElement.dataset.medicines) : [];
-const container = document.getElementById('medicine-rows-container');
-let rowIndex = 0;
-
-function createMedicineRow() {
-    const div = document.createElement('div');
-    const selectId = `med-select-${rowIndex}`;
-    div.className = "grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_120px_auto] gap-3 p-3 bg-gray-50/50 rounded-xl border border-gray-100 animate-in fade-in slide-in-from-top-1";
-    
-    let options = '<option value="">Search medicine...</option>';
-    allMedicines.forEach(med => {
-        options += `<option value="${med.id}">${med.name} (Stock: ${med.stock})</option>`;
-    });
-
-    div.innerHTML = `
-        <div>
-            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Medicine</label>
-            <select id="${selectId}" name="medicines[${rowIndex}][id]" required class="w-full">${options}</select>
-        </div>
-        <div>
-            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Quantity</label>
-            <input type="number" name="medicines[${rowIndex}][quantity]" placeholder="Qty" required min="1" value="1"
-                   class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-semibold h-[42px] outline-none focus:border-blue-400">
-        </div>
-        <button type="button" class="text-gray-300 hover:text-red-500 self-end mb-1 transition justify-self-end" title="Remove medicine row" onclick="this.parentElement.remove()">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-    `;
-    container.appendChild(div);
-
-    $(`#${selectId}`).select2({
-        dropdownParent: $('#quickAddModal'),
-        width: '100%'
-    });
-    rowIndex++;
-}
-
 function handleOpenModal(button) {
     const record = JSON.parse(button.getAttribute('data-record'));
     document.getElementById('modal_first_name').value = record.first_name;
@@ -582,9 +470,6 @@ function handleOpenModal(button) {
     
     const dob = new Date(record.birthday).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     document.getElementById('display_dob').innerText = `Date of Birth: ${dob}`;
-    
-    container.innerHTML = '';
-    createMedicineRow();
     
     document.getElementById('quickAddModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden'; 

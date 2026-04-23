@@ -19,16 +19,16 @@ class EnsureRole
             abort(403);
         }
 
+        if (!$user->is_active) {
+            abort(403, 'Your account is inactive.');
+        }
+
         if (empty($roles)) {
             return $next($request);
         }
 
         if (!in_array((string) $user->role, $roles, true)) {
             abort(403);
-        }
-
-        if ((string) $user->role === 'doctor' && !now()->isWednesday()) {
-            abort(403, 'Doctor access is available only every Wednesday.');
         }
 
         return $next($request);

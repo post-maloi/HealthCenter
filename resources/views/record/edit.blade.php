@@ -4,6 +4,7 @@
 @php
     $role = auth()->user()->role ?? 'bhw';
     $isNurse = $role === 'nurse';
+    $isBhw = $role === 'bhw';
 @endphp
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -113,7 +114,22 @@
                 </div>
             </div>
             <div class="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700">
-                Nurse scope: vitals, triage, and monitoring only. Status remains waiting_for_doctor.
+                Nurse scope: vitals, triage, and monitoring only. Status remains pending.
+            </div>
+            @elseif($isBhw)
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Diagnosis</label>
+                <textarea rows="3" readonly
+                    class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-500 outline-none cursor-not-allowed">{{ old('diagnosis', $record->diagnosis) }}</textarea>
+            </div>
+
+            <div class="border border-slate-100 rounded-2xl p-6 mt-8 bg-white">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-bold text-slate-500 uppercase">Medicines Given</h3>
+                </div>
+                <div class="p-3 rounded-xl border border-dashed border-amber-200 bg-amber-50 text-xs font-semibold text-amber-700">
+                    BHW cannot edit diagnosis and medicine entries.
+                </div>
             </div>
             @else
             <div>

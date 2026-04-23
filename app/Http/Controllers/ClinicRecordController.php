@@ -5,16 +5,18 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\ClinicRecord; 
 use App\Models\Medicine;
+use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Collection;
 
 class ClinicRecordController extends Controller
 {
-    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
+    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'waiting_for_doctor/nurse';
 
     private function currentRole(): string
     {
@@ -65,6 +67,33 @@ class ClinicRecordController extends Controller
         return ($diff->y === 0) ? $diff->m . ' Mon' : $diff->y . ' yrs';
     }
 
+    private function hasAnyVital(ClinicRecord $record): bool
+    {
+        foreach (['temp', 'bp', 'pr', 'rr', 'weight', 'height', 'bmi'] as $field) {
+            $value = $record->{$field};
+            if (!is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function attachDisplayVitals(Collection $records): Collection
+    {
+        return $records->map(function (ClinicRecord $record) use ($records) {
+            $fallback = $records->first(fn (ClinicRecord $item) => $this->hasAnyVital($item));
+            foreach (['temp', 'bp', 'pr', 'rr', 'weight', 'height', 'bmi'] as $field) {
+                $current = $record->{$field};
+                $record->{"display_{$field}"} = (!is_null($current) && trim((string) $current) !== '' && strtoupper(trim((string) $current)) !== 'N/A')
+                    ? $current
+                    : ($fallback?->{$field} ?? null);
+            }
+
+            return $record;
+        });
+    }
+
     public function index(Request $request)
     {
         $search = $request->get('search');
@@ -84,6 +113,8 @@ class ClinicRecordController extends Controller
         })
         ->orderBy('consultation_date', 'desc')
         ->get();
+
+        $records = $this->attachDisplayVitals($records);
 
         return view('record.index', [
             'records' => $records,
@@ -139,8 +170,6 @@ class ClinicRecordController extends Controller
             'height'            => 'nullable|numeric',
             'bmi'               => 'nullable|string',
             'age'               => 'nullable|string',
-            'laboratory_images'   => 'nullable|array|max:5',
-            'laboratory_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
         // Track who consulted the patient (BHW user).
@@ -161,19 +190,20 @@ class ClinicRecordController extends Controller
         }
 
         // BHW can only create patient + symptoms + queue; diagnosis/medications/lab are doctor-only.
+        // Keep captured vitals so they remain visible in all history views.
         $validated['diagnosis'] = self::DOCTOR_PLACEHOLDER_DIAGNOSIS;
-        $validated['temp'] = null;
-        $validated['bp'] = null;
-        $validated['pr'] = null;
-        $validated['rr'] = null;
-        $validated['weight'] = null;
-        $validated['height'] = null;
-        $validated['bmi'] = null;
         $validated['objective'] = $this->buildQueueLabel($validated['objective'] ?? null);
 
         DB::transaction(function () use ($request, $validated) {
             $record = ClinicRecord::create($validated);
             $record->medicines()->detach();
+
+            ActivityLogger::log(
+                'patient_record_created',
+                "Created record for {$record->first_name} {$record->last_name}",
+                $record,
+                $request
+            );
         });
 
         return redirect()->route('record.index')->with('success', 'Record saved!');
@@ -190,11 +220,13 @@ class ClinicRecordController extends Controller
             ->orderBy('consultation_date', 'desc')
             ->get();
 
-        // Revised to use compact() for cleaner code
+        $history = $this->attachDisplayVitals($history);
+        $record = $this->attachDisplayVitals(collect([$record]))->first();
+
         return view('record.show', [
-    'record' => $record,
-    'history' => $history
-]);
+            'record' => $record,
+            'history' => $history
+        ]);
     }
 
     public function edit($id)
@@ -252,6 +284,46 @@ class ClinicRecordController extends Controller
 
             return redirect()->route('record.show', $id)->with('success', 'Nurse updates saved. Status: waiting_for_doctor');
         }
+
+        if ($role === 'bhw') {
+            $validated = $request->validate([
+                'first_name'        => 'required|string|max:255',
+                'middle_name'       => 'nullable|string|max:255',
+                'last_name'         => 'required|string|max:255',
+                'birthday'          => 'required|date',
+                'consultation_date' => 'required|date',
+                'gender'            => 'required|string',
+                'civil_status'      => 'required|string',
+                'contact_number'    => 'nullable|string|max:50',
+                'address_purok'     => 'required|string',
+                'temp'              => 'nullable|string',
+                'bp'                => 'nullable|string',
+                'pr'                => 'nullable|string',
+                'rr'                => 'nullable|string',
+                'weight'            => 'nullable|numeric',
+                'height'            => 'nullable|numeric',
+                'bmi'               => 'nullable|string',
+                'subjective'        => 'nullable|string',
+                'objective'         => 'nullable|string',
+            ]);
+
+            $record->update([
+                ...$validated,
+                'age' => $this->formatAgeFromBirthday($validated['birthday']),
+                // Preserve doctor/nurse diagnosis and dispensed medicines.
+                'diagnosis' => $record->diagnosis,
+                'medicines_given' => $record->medicines_given,
+            ]);
+
+            ActivityLogger::log(
+                'patient_record_updated',
+                "BHW updated record for {$record->first_name} {$record->last_name}",
+                $record,
+                $request
+            );
+
+            return redirect()->route('record.show', $id)->with('success', 'Record updated successfully.');
+        }
         
         $validated = $request->validate([
             'first_name'        => 'required|string|max:255',
@@ -283,6 +355,12 @@ class ClinicRecordController extends Controller
             $record->medicines()->detach();
 
             $record->update($validated);
+            ActivityLogger::log(
+                'patient_record_updated',
+                "Updated record for {$record->first_name} {$record->last_name}",
+                $record,
+                $request
+            );
         });
 
         return redirect()->route('record.show', $id)->with('success', 'Record updated successfully!');

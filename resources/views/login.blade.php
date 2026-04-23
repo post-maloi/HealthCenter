@@ -90,11 +90,8 @@
                     </button>
                 </div>
                 
-                {{-- **Register Link Logic: Kept exactly as is** --}}
                 <div class="text-center mt-10">
-                    <p class="text-sm text-gray-500 font-medium">Don't have an account? 
-                        <a href="{{ route('register') }}" class="text-blue-600 font-bold hover:underline">Register here</a>
-                    </p>
+                    <p class="text-sm text-gray-500 font-medium">Contact administrator for account access.</p>
                 </div>
             </form>
         </div>

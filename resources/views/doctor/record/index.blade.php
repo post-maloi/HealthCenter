@@ -71,7 +71,8 @@
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Patient Name</th>
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Age / Gender</th>
                     <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Address</th>
-                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnosis</th>
+                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Latest Vitals</th>
+                    <th class="px-6 py-4 text-left text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
                     <th class="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">Actions</th>
                 </tr>
             </thead>
@@ -108,9 +109,12 @@
                     </td>
                     
                     <td class="px-6 py-4 text-sm text-gray-600">{{ $record->address_purok }}</td>
+                    <td class="px-6 py-4 text-xs text-gray-600">
+                        T: {{ $record->display_temp ?: '--' }} | BP: {{ $record->display_bp ?: '--' }} | WT: {{ $record->display_weight ?: '--' }}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-600 italic">
-                        @if(trim((string) $record->diagnosis) === 'For doctor assessment')
-                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">waiting_for_doctor</span>
+                        @if(in_array(trim((string) $record->diagnosis), ['For doctor assessment', 'waiting_for_doctor/nurse'], true))
+                            <span class="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wide">pending</span>
                         @else
                             <span class="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wide">completed</span>
                         @endif
@@ -137,20 +141,13 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>
+                <tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
     <div id="recordsPagination" class="mt-4"></div>
 </div>
-
-<button type="button"
-    onclick="showDoctorFloatingHint()"
-    class="fixed bottom-8 right-8 z-40 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-blue-700">
-    <span class="text-base leading-none">+</span>
-    Add New Consultation
-</button>
 
 <div id="quickAddModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen px-4">
@@ -378,7 +375,7 @@ function renderRecordPagination(filteredRows) {
             pagerSelector: '#recordsPagination',
             tableBodySelector: '#recordsTableBody',
             rows: [],
-            emptyRowHtml: '<tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
+            emptyRowHtml: '<tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
         });
         return;
     }
@@ -387,7 +384,7 @@ function renderRecordPagination(filteredRows) {
         pagerSelector: '#recordsPagination',
         tableBodySelector: '#recordsTableBody',
         rows: filteredRows.map(item => item.html),
-        emptyRowHtml: '<tr><td colspan="6" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
+        emptyRowHtml: '<tr><td colspan="7" class="px-6 py-16 text-center text-gray-400 italic">No patient records found.</td></tr>'
     });
 }
 

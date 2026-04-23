@@ -2,6 +2,9 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $isDoctorRole = (auth()->user()->role ?? null) === 'doctor';
+@endphp
 {{-- Load Alpine.js for floating overlays --}}
 <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -12,9 +15,11 @@
             <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Inventory Medicine</h1>
             <p class="text-gray-500 text-sm mt-1">Full inventory history. Newest arrivals shown in table.</p>
         </div>
-        <a href="{{ route('medicines.create') }}" class="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-lg shadow-sm hover:bg-blue-700 transition">
-            + Add Medicine
-        </a>
+        @unless($isDoctorRole)
+            <a href="{{ route('medicines.create') }}" class="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-lg shadow-sm hover:bg-blue-700 transition">
+                + Add Medicine
+            </a>
+        @endunless
     </div>
 
     {{-- Search Bar --}}
@@ -92,16 +97,20 @@
                                 View Details
                             </button>
 
-                            <button @click="openAddLot = '{{ $loop->index }}'" class="p-2 bg-[#ECFDF5] text-[#10B981] rounded-xl hover:opacity-80 transition shadow-sm shrink-0">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                            </button>
-
-                            <form action="{{ route('medicines.destroy_group', ['name' => $name]) }}" method="POST" onsubmit="return confirm('Delete all batches and history for {{ $name }}?')" class="m-0">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="p-2 bg-[#FFF1F1] text-[#FF5C5C] rounded-xl hover:opacity-80 transition shadow-sm shrink-0">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            @unless($isDoctorRole)
+                                <button @click="openAddLot = '{{ $loop->index }}'" class="p-2 bg-[#ECFDF5] text-[#10B981] rounded-xl hover:opacity-80 transition shadow-sm shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                                 </button>
-                            </form>
+                            @endunless
+
+                            @unless($isDoctorRole)
+                                <form action="{{ route('medicines.destroy_group', ['name' => $name]) }}" method="POST" onsubmit="return confirm('Delete all batches and history for {{ $name }}?')" class="m-0">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="p-2 bg-[#FFF1F1] text-[#FF5C5C] rounded-xl hover:opacity-80 transition shadow-sm shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </form>
+                            @endunless
                         </div>
 
                         {{-- MODAL 1: VIEW DETAILS --}}
@@ -147,11 +156,6 @@
 
                                         <div class="flex flex-col gap-2 pl-6 border-l border-gray-50">
                                             <a href="{{ route('medicines.edit', $lot) }}" class="px-5 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase text-center hover:bg-blue-100 transition">View</a>
-                                            <a href="{{ route('medicines.edit', $lot) }}" class="px-5 py-2 bg-[#E9F3F1] text-[#2D8A80] rounded-xl text-[10px] font-black uppercase text-center hover:bg-teal-50 transition">Edit</a>
-                                            <form action="{{ route('medicines.destroy', $lot) }}" method="POST" onsubmit="return confirm('Remove this batch?')" class="m-0">
-                                                @csrf @method('DELETE')
-                                                <button class="px-5 py-2 bg-[#FFF1F1] text-[#FF5C5C] rounded-xl text-[10px] font-black uppercase hover:bg-red-50 transition">Delete</button>
-                                            </form>
                                         </div>
                                     </div>
                                     @empty

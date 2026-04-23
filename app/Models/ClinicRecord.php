@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class ClinicRecord extends Model
 {
     use HasFactory;
-    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
+    private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'waiting_for_doctor/nurse';
 
     protected $casts = [
         'consultation_date' => 'date',
@@ -56,7 +56,7 @@ protected $fillable = [
 
     public function getWorkflowStatusAttribute(): string
     {
-        if (!empty($this->doctor_consulted_by) && trim((string) $this->diagnosis) !== self::DOCTOR_PLACEHOLDER_DIAGNOSIS) {
+        if (!empty($this->doctor_consulted_by) && !in_array(trim((string) $this->diagnosis), [self::DOCTOR_PLACEHOLDER_DIAGNOSIS, 'For doctor assessment'], true)) {
             return 'completed';
         }
 

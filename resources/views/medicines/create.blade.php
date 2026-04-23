@@ -17,10 +17,6 @@
         <form action="{{ route('medicines.store') }}" method="POST" id="medicineForm">
             @csrf
             
-            <input type="hidden" name="stock" value="0">
-            <input type="hidden" name="expiration_date" value="{{ now()->addYear()->format('Y-m-d') }}">
-            <input type="hidden" name="arrival_date" value="{{ now()->format('Y-m-d') }}">
-            
             {{-- This hidden input will hold the combined name sent to the database --}}
             <input type="hidden" name="name" id="combined_name">
 
@@ -83,7 +79,6 @@
                         <option value="Ointment">Ointment</option>
                         <option value="Eye Drops">Eye Drops</option>
                         <option value="Nebule">Nebule</option>
-                        <option value="Injection">Injection</option>
                     </select>
                 </div>
 
@@ -95,11 +90,37 @@
                             class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
                         <select name="dosage_unit" id="dosage_unit" required
                             class="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition bg-white">
+                            <option value="mcg">mcg</option>
                             <option value="mg" selected>mg</option>
+                            <option value="g">g</option>
                             <option value="ml">ml</option>
                         </select>
                     </div>
-                    <p class="mt-2 text-[10px] text-gray-400 italic">Example output: Brand (Generic Name) 500mg Tablet / 60ml Syrup</p>
+                    <p class="mt-2 text-[10px] text-gray-400 italic">Example output: Brand (Generic Name) 500mg Capsule</p>
+                </div>
+
+                {{-- Inventory Details --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Stock Number</label>
+                        <input type="text" name="batch_number" placeholder="e.g. LOT-001" value="{{ old('batch_number') }}" required
+                            class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Date Received</label>
+                        <input type="date" name="arrival_date" value="{{ old('arrival_date', now()->format('Y-m-d')) }}" required
+                            class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Expiration Date</label>
+                        <input type="date" name="expiration_date" value="{{ old('expiration_date') }}" required
+                            class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Quantity</label>
+                        <input type="number" name="stock" min="1" value="{{ old('stock', 1) }}" required
+                            class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
+                    </div>
                 </div>
             </div>
 

@@ -7,9 +7,21 @@
             <h1 class="text-3xl font-bold text-gray-800">{{ (auth()->user()->role ?? '') === 'nurse' ? 'Nurse Dashboard' : 'Doctor Dashboard' }}</h1>
             <p class="text-gray-500 mt-1 text-sm">Daily summary and consultations overview</p>
         </div>
-        <div class="text-right hidden md:block">
+        <div class="text-right hidden md:block space-y-2">
             <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Current Date</p>
             <p class="text-lg font-bold text-slate-700">{{ now()->format('F d, Y') }}</p>
+            @if((auth()->user()->role ?? '') === 'doctor')
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold {{ $isDoctorAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                    <span class="w-2 h-2 rounded-full {{ $isDoctorAvailable ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
+                    {{ $isDoctorAvailable ? 'Doctor Available' : 'Doctor Inactive' }}
+                </div>
+                <form method="POST" action="{{ route('doctor.availability.toggle') }}">
+                    @csrf
+                    <button class="mt-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 text-white hover:bg-slate-700">
+                        Set {{ $isDoctorAvailable ? 'Inactive' : 'Active' }}
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 
