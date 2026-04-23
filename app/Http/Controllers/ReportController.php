@@ -4,11 +4,52 @@ namespace App\Http\Controllers;
 
 use App\Models\ClinicRecord;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 
 class ReportController extends Controller
 {
+    private const DIAGNOSIS_PLACEHOLDERS = [
+        'waiting_for_doctor/nurse',
+        'For doctor assessment',
+    ];
+
+    private function patientKey(ClinicRecord $record): string
+    {
+        return mb_strtolower(trim(implode('|', [
+            (string) $record->first_name,
+            (string) $record->last_name,
+            (string) $record->birthday,
+        ])));
+    }
+
+    private function applyResolvedDiagnoses(Collection $patients): Collection
+    {
+        if ($patients->isEmpty()) {
+            return $patients;
+        }
+
+        $latestActualDiagnoses = ClinicRecord::query()
+            ->whereNotNull('diagnosis')
+            ->where('diagnosis', '!=', '')
+            ->whereNotIn('diagnosis', self::DIAGNOSIS_PLACEHOLDERS)
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->get()
+            ->unique(fn (ClinicRecord $record) => $this->patientKey($record))
+            ->mapWithKeys(fn (ClinicRecord $record) => [$this->patientKey($record) => $record->diagnosis]);
+
+        return $patients->map(function (ClinicRecord $record) use ($latestActualDiagnoses) {
+            $record->resolved_diagnosis = $latestActualDiagnoses->get(
+                $this->patientKey($record),
+                $record->diagnosis
+            );
+
+            return $record;
+        });
+    }
+
     private function applyAgeGroupFilter($query, ?string $ageGroup)
     {
         return $query->when($ageGroup, function ($q) use ($ageGroup) {
@@ -48,9 +89,11 @@ class ReportController extends Controller
             ->when($address !== 'all', function ($query) use ($address) {
                 $query->where('address_purok', $address);
             })
-            ->orderBy('consultation_date', 'desc');
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc');
 
         $patients = $this->applyAgeGroupFilter($patientsQuery, $ageGroup === 'all' ? null : $ageGroup)->get();
+        $patients = $this->applyResolvedDiagnoses($patients);
         $addressOptions = ClinicRecord::query()
             ->whereNotNull('address_purok')
             ->where('address_purok', '!=', '')
@@ -96,9 +139,11 @@ class ReportController extends Controller
             ->when($address !== 'all', function ($query) use ($address) {
                 $query->where('address_purok', $address);
             })
-            ->orderBy('consultation_date', 'desc');
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc');
 
         $patients = $this->applyAgeGroupFilter($patientsQuery, $ageGroup === 'all' ? null : $ageGroup)->get();
+        $patients = $this->applyResolvedDiagnoses($patients);
 
         $headers = [
             'Consultation Date',
@@ -128,7 +173,7 @@ class ReportController extends Controller
                 $record->gender,
                 $record->civil_status,
                 $record->address_purok,
-                $record->diagnosis,
+                $record->resolved_diagnosis ?? $record->diagnosis,
             ]));
         }
 

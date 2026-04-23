@@ -76,8 +76,6 @@
                 <div class="space-y-2">
                     <div class="flex items-center justify-between">
                         <label class="block text-xs font-black text-gray-400 uppercase tracking-widest">Password</label>
-                        {{-- Generic forgot password link placeholder --}}
-                        <a href="#" class="text-xs font-medium text-gray-400 hover:text-blue-600">Forgot Password?</a>
                     </div>
                     <input type="password" name="password" required placeholder="••••••••"
                         class="w-full px-6 py-4 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition bg-gray-50/50">

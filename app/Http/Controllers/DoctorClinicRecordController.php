@@ -18,6 +18,7 @@ use Illuminate\Validation\ValidationException;
 class DoctorClinicRecordController extends Controller
 {
     private const DOCTOR_PLACEHOLDER_DIAGNOSIS = 'waiting_for_doctor/nurse';
+    private const NURSE_PLACEHOLDER_DIAGNOSIS = 'For doctor assessment';
 
     private function currentRole(): string
     {
@@ -82,6 +83,145 @@ class DoctorClinicRecordController extends Controller
         });
     }
 
+    private function hasResolvedDiagnosis(?string $diagnosis): bool
+    {
+        $value = trim((string) $diagnosis);
+        if ($value === '') {
+            return false;
+        }
+
+        return !in_array($value, [self::DOCTOR_PLACEHOLDER_DIAGNOSIS, self::NURSE_PLACEHOLDER_DIAGNOSIS], true);
+    }
+
+    private function normalizedIssueSignature(ClinicRecord $record): string
+    {
+        $diagnosis = mb_strtolower(trim((string) $record->diagnosis));
+        $subjective = mb_strtolower(trim((string) $record->subjective));
+        $subjective = preg_replace('/\s+/', ' ', $subjective);
+        return trim($diagnosis . '|' . $subjective);
+    }
+
+    private function recommendationForStatus(string $status): string
+    {
+        return match ($status) {
+            'recovered' => 'Continue home care and routine preventive follow-up.',
+            'improving' => 'Continue current treatment and monitor progress on next visit.',
+            'no_improvement' => 'Recommend further laboratory testing.',
+            'worsened' => 'Patient may require specialist referral.',
+            default => 'Schedule follow-up consultation and monitor symptoms closely.',
+        };
+    }
+
+    private function buildRecoveryMonitoring(): array
+    {
+        $records = ClinicRecord::query()
+            ->whereDate('consultation_date', '>=', now()->subDays(120))
+            ->orderBy('consultation_date')
+            ->orderBy('id')
+            ->get();
+
+        $grouped = $records->groupBy(function (ClinicRecord $record) {
+            return mb_strtolower(trim(implode('|', [
+                (string) $record->first_name,
+                (string) $record->last_name,
+                (string) $record->birthday,
+            ])));
+        });
+
+        $statusRows = collect();
+        $trendCounts = [
+            'recovered' => 0,
+            'improving' => 0,
+            'no_improvement' => 0,
+            'worsened' => 0,
+            'monitoring' => 0,
+        ];
+        $alerts = [];
+
+        foreach ($grouped as $patientRecords) {
+            $resolvedVisits = $patientRecords
+                ->filter(fn (ClinicRecord $record) => $this->hasResolvedDiagnosis($record->diagnosis))
+                ->values();
+
+            if ($resolvedVisits->isEmpty()) {
+                continue;
+            }
+
+            $latest = $resolvedVisits->last();
+            $latestDiagnosis = trim((string) $latest->diagnosis);
+            $resolvedCount = $resolvedVisits->count();
+            $selectedStatus = trim((string) $latest->condition_update);
+
+            $status = in_array($selectedStatus, ['recovered', 'improving', 'no_improvement', 'worsened'], true)
+                ? $selectedStatus
+                : 'monitoring';
+
+            $message = match ($status) {
+                'recovered' => "Recovered after {$resolvedCount} follow-up visit(s).",
+                'improving' => "Improving after {$resolvedCount} consultation(s).",
+                'worsened' => 'Condition worsened. Immediate follow-up recommended.',
+                'no_improvement' => "No improvement after {$resolvedCount} consultation(s).",
+                default => "Monitoring ({$resolvedCount} consultation(s))",
+            };
+
+            if (in_array($status, ['monitoring', 'improving'], true) && $resolvedCount >= 3) {
+                $lastThreeSignatures = $resolvedVisits
+                    ->slice(-3)
+                    ->map(fn (ClinicRecord $record) => $this->normalizedIssueSignature($record))
+                    ->filter()
+                    ->unique();
+
+                if ($lastThreeSignatures->count() === 1) {
+                    $status = 'no_improvement';
+                    $message = 'No improvement after 3 consultations.';
+                }
+            }
+
+            $statusRows->push([
+                'record_id' => $latest->id,
+                'patient_name' => trim(implode(' ', array_filter([
+                    $latest->first_name,
+                    $latest->middle_name,
+                    $latest->last_name,
+                ]))),
+                'status' => $status,
+                'message' => $message,
+                'diagnosis' => $latestDiagnosis,
+                'consultation_date' => $latest->consultation_date,
+                'follow_up_recommendation' => $latest->follow_up_recommendation ?: $this->recommendationForStatus($status),
+            ]);
+            $trendCounts[$status] = ($trendCounts[$status] ?? 0) + 1;
+
+            if ($status === 'no_improvement') {
+                $alerts[] = "⚠ {$latest->first_name} {$latest->last_name} has 3 consultations with no improvement.";
+            } elseif ($status === 'recovered') {
+                $alerts[] = "✅ {$latest->first_name} {$latest->last_name} recovered after {$resolvedCount} follow-up visit(s).";
+            }
+        }
+
+        $priority = ['no_improvement' => 0, 'monitoring' => 1, 'recovered' => 2];
+        $rows = $statusRows
+            ->sortBy([
+                fn (array $row) => $priority[$row['status']] ?? 9,
+                fn (array $row) => $row['consultation_date']?->timestamp ? -$row['consultation_date']->timestamp : 0,
+            ])
+            ->values();
+
+        return [
+            'summary' => [
+                'recovered' => $rows->where('status', 'recovered')->count(),
+                'no_improvement' => $rows->where('status', 'no_improvement')->count(),
+                'improving' => $rows->where('status', 'improving')->count(),
+                'worsened' => $rows->where('status', 'worsened')->count(),
+                'monitoring' => $rows->where('status', 'monitoring')->count(),
+                'follow_up' => $rows->whereIn('status', ['monitoring', 'no_improvement', 'worsened'])->count(),
+            ],
+            'rows' => $rows->take(6),
+            'trend' => $trendCounts,
+            'alerts' => collect($alerts)->take(4)->values(),
+        ];
+    }
+
     public function dashboard()
     {
         $totalPatients = ClinicRecord::select('first_name', 'last_name', 'birthday')
@@ -92,16 +232,20 @@ class DoctorClinicRecordController extends Controller
         $todayConsultations = ClinicRecord::whereDate('consultation_date', today())->count();
         $lowStockCount = Medicine::where('stock', '<', 10)->count();
 
-        $recentRecords = ClinicRecord::latest('consultation_date')
+        $recentRecords = ClinicRecord::query()
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get()
             ->unique(fn ($item) => $item->first_name . $item->last_name . $item->birthday)
             ->take(5);
+        $recoveryMonitoring = $this->buildRecoveryMonitoring();
 
         return view('doctor.dashboard', [
             'totalPatients'      => $totalPatients,
             'todayConsultations' => $todayConsultations,
             'lowStockCount'      => $lowStockCount,
             'recentRecords'      => $recentRecords,
+            'recoveryMonitoring' => $recoveryMonitoring,
             'isDoctorAvailable'  => (bool) (Auth::user()?->is_doctor_available),
         ]);
     }
@@ -124,6 +268,7 @@ class DoctorClinicRecordController extends Controller
                 });
             })
             ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
         $records = $this->attachDisplayVitals($records);
@@ -184,6 +329,7 @@ class DoctorClinicRecordController extends Controller
 
             // Doctor fills these (not auto-filled)
             'diagnosis' => 'required|string',
+            'condition_update' => 'required|in:recovered,improving,no_improvement,worsened',
 
             // Not auto-filled; doctor uploads/attaches as needed
             'laboratory_images'   => 'nullable|array|max:5',
@@ -211,6 +357,8 @@ class DoctorClinicRecordController extends Controller
 
             'consultation_date' => $validated['consultation_date'],
             'diagnosis' => $validated['diagnosis'],
+            'condition_update' => $validated['condition_update'],
+            'follow_up_recommendation' => $this->recommendationForStatus($validated['condition_update']),
             // Doctor reviews these values, but they come from the latest BHW consultation.
             'subjective' => $latest?->subjective,
             'objective' => $latest?->objective,

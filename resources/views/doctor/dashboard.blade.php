@@ -58,7 +58,86 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-800">Patient Recovery Monitoring</h3>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Doctor + Nurse</span>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                <div class="rounded-lg bg-emerald-50 border border-emerald-100 p-2 text-center">
+                    <p class="text-[10px] text-emerald-700 font-bold uppercase">Recovered</p>
+                    <p class="text-lg font-black text-emerald-700">{{ $recoveryMonitoring['summary']['recovered'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-amber-50 border border-amber-100 p-2 text-center">
+                    <p class="text-[10px] text-amber-700 font-bold uppercase">Monitoring</p>
+                    <p class="text-lg font-black text-amber-700">{{ $recoveryMonitoring['summary']['monitoring'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-yellow-50 border border-yellow-100 p-2 text-center">
+                    <p class="text-[10px] text-yellow-700 font-bold uppercase">Improving</p>
+                    <p class="text-lg font-black text-yellow-700">{{ $recoveryMonitoring['summary']['improving'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-orange-50 border border-orange-100 p-2 text-center">
+                    <p class="text-[10px] text-orange-700 font-bold uppercase">No Improvement</p>
+                    <p class="text-lg font-black text-orange-700">{{ $recoveryMonitoring['summary']['no_improvement'] ?? 0 }}</p>
+                </div>
+                <div class="rounded-lg bg-red-50 border border-red-100 p-2 text-center">
+                    <p class="text-[10px] text-red-700 font-bold uppercase">Worsened</p>
+                    <p class="text-lg font-black text-red-700">{{ $recoveryMonitoring['summary']['worsened'] ?? 0 }}</p>
+                </div>
+            </div>
+
+            <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p class="text-xs text-slate-700 font-semibold">
+                    Patients requiring follow-up: {{ $recoveryMonitoring['summary']['follow_up'] ?? 0 }}
+                </p>
+            </div>
+
+            @if(!empty($recoveryMonitoring['alerts']) && count($recoveryMonitoring['alerts']) > 0)
+                <div class="space-y-2 mb-4">
+                    @foreach($recoveryMonitoring['alerts'] as $alert)
+                        <p class="text-xs rounded-lg px-3 py-2 bg-slate-50 border border-slate-200 text-slate-700">{{ $alert }}</p>
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="space-y-2">
+                @forelse(($recoveryMonitoring['rows'] ?? []) as $row)
+                    @php
+                        $badgeClass = match($row['status']) {
+                            'recovered' => 'bg-emerald-100 text-emerald-700',
+                            'improving' => 'bg-yellow-100 text-yellow-700',
+                            'no_improvement' => 'bg-orange-100 text-orange-700',
+                            'worsened' => 'bg-red-100 text-red-700',
+                            default => 'bg-amber-100 text-amber-700',
+                        };
+                    @endphp
+                    <div class="rounded-lg border border-slate-100 px-3 py-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="text-sm font-bold text-slate-800 truncate">{{ $row['patient_name'] }}</p>
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full {{ $badgeClass }}">
+                                {{ str_replace('_', ' ', strtoupper($row['status'])) }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 mt-1">{{ $row['message'] }}</p>
+                        <p class="text-[11px] text-slate-500 mt-1">{{ $row['follow_up_recommendation'] }}</p>
+                        <div class="mt-1 flex items-center justify-between gap-2">
+                            <p class="text-[11px] text-slate-400 truncate">{{ $row['diagnosis'] }}</p>
+                            @if(!empty($row['record_id']))
+                                <a href="{{ route('doctor.record.show', $row['record_id']) }}" class="shrink-0 text-[11px] font-bold text-blue-600 hover:text-blue-700 hover:underline">
+                                    View patient
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-sm text-slate-400 italic">No recovery monitoring data yet.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-5 border-b border-gray-50 flex justify-between items-center">
                 <h3 class="font-bold text-gray-800">Recent Activity</h3>
                 <a href="{{ route('doctor.record.index') }}" class="text-sm text-blue-600 font-bold hover:underline">View History</a>
@@ -85,7 +164,6 @@
             </div>
         </div>
 
-        <div class="space-y-6">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="font-bold text-gray-800 mb-4">Quick Navigation</h3>
                 <div class="grid grid-cols-1 gap-3">

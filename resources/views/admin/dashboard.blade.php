@@ -18,6 +18,21 @@
         <div class="bg-white rounded-xl border p-4"><p class="text-xs text-slate-500">Low Stock Medicines</p><p class="text-2xl font-bold text-red-600">{{ $lowStockMedicines->count() }}</p></div>
     </div>
 
+    <div class="grid md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl border p-4">
+            <p class="text-xs text-slate-500">Recovered Patients</p>
+            <p class="text-2xl font-bold text-emerald-600">{{ $recoveryAnalytics['recovered_patients'] ?? 0 }}</p>
+        </div>
+        <div class="bg-white rounded-xl border p-4">
+            <p class="text-xs text-slate-500">Patients With Repeated Symptoms</p>
+            <p class="text-2xl font-bold text-orange-600">{{ $recoveryAnalytics['repeated_symptoms_patients'] ?? 0 }}</p>
+        </div>
+        <div class="bg-white rounded-xl border p-4">
+            <p class="text-xs text-slate-500">Unresolved Consultations</p>
+            <p class="text-2xl font-bold text-red-600">{{ $recoveryAnalytics['unresolved_consultation_count'] ?? 0 }}</p>
+        </div>
+    </div>
+
     <div class="grid lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-xl border p-5">
             <h2 class="font-bold mb-3">Recent Activity Logs</h2>

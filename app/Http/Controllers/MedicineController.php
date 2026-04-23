@@ -22,6 +22,30 @@ class MedicineController extends Controller
     public function index() 
     {
         $medicines = Medicine::orderBy('arrival_date', 'desc')->get();
+        $today = now()->startOfDay();
+        $expiryThreshold = $today->copy()->addDays(30);
+
+        $expiringSoonMedicines = $medicines
+            ->filter(function (Medicine $medicine) use ($today, $expiryThreshold) {
+                return $medicine->stock > 0
+                    && $medicine->expiration_date
+                    && $medicine->expiration_date->gte($today)
+                    && $medicine->expiration_date->lte($expiryThreshold);
+            })
+            ->groupBy('name')
+            ->map(function ($lots, $name) use ($today) {
+                $nearestLot = $lots->sortBy('expiration_date')->first();
+
+                return [
+                    'name' => $name,
+                    'expiration_date' => $nearestLot->expiration_date,
+                    'days_left' => $today->diffInDays($nearestLot->expiration_date),
+                    'total_stock' => $lots->sum('stock'),
+                ];
+            })
+            ->sortBy('days_left')
+            ->values();
+
         $inventoryLogs = InventoryLog::with(['medicine', 'user'])
             ->latest()
             ->get()
@@ -31,6 +55,7 @@ class MedicineController extends Controller
 
         return view('medicines.index', [
             'medicines' => $medicines,
+            'expiringSoonMedicines' => $expiringSoonMedicines,
             'inventoryLogs' => $inventoryLogs,
         ]);
     }

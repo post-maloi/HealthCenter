@@ -23,7 +23,9 @@ class DashboardController extends Controller
         $lowStockCount = Medicine::where('stock', '<', 10)->count();
 
         // 4. RECENT ACTIVITY: Gets the latest unique consultations
-        $recentRecords = ClinicRecord::latest('consultation_date')
+        $recentRecords = ClinicRecord::query()
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get()
             ->unique(function ($item) {
                 return $item->first_name . $item->last_name . $item->birthday;

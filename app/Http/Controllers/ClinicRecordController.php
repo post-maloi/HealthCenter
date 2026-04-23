@@ -112,6 +112,7 @@ class ClinicRecordController extends Controller
             });
         })
         ->orderBy('consultation_date', 'desc')
+        ->orderBy('id', 'desc')
         ->get();
 
         $records = $this->attachDisplayVitals($records);

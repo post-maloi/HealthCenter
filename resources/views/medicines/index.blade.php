@@ -30,6 +30,34 @@
         <input type="text" id="inventorySearch" onkeyup="runFilters()" placeholder="Search medicine..." class="pl-10 pr-4 py-3 w-full rounded-xl border border-gray-200 outline-none shadow-sm focus:border-blue-500 transition">
     </div>
 
+    @if(($expiringSoonMedicines ?? collect())->isNotEmpty())
+        <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 class="text-sm font-bold text-amber-800">Medicines Expiring Soon</h2>
+                    <p class="text-xs text-amber-700">Active stocks that will expire within 30 days.</p>
+                </div>
+                <span class="text-xs font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                    {{ $expiringSoonMedicines->count() }} item(s)
+                </span>
+            </div>
+            <div class="mt-3 grid md:grid-cols-2 gap-2">
+                @foreach($expiringSoonMedicines as $item)
+                    <div class="rounded-lg bg-white border border-amber-100 px-3 py-2 flex justify-between items-center gap-2">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold text-slate-800 truncate">{{ $item['name'] }}</p>
+                            <p class="text-[11px] text-slate-500">Expires {{ $item['expiration_date']->format('M d, Y') }}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-xs font-bold text-amber-700">{{ $item['days_left'] }} day(s) left</p>
+                            <p class="text-[11px] text-slate-500">Stock: {{ $item['total_stock'] }}</p>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table class="min-w-full divide-y divide-gray-200 table-fixed" id="inventoryTable">
             <thead class="bg-slate-50">

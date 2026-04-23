@@ -56,7 +56,9 @@ Route::middleware('auth')->group(function () {
         $todayConsultations = ClinicRecord::whereDate('consultation_date', today())->count();
         $lowStockCount = Medicine::where('stock', '<', 10)->count();
 
-        $recentRecords = ClinicRecord::latest('consultation_date')
+        $recentRecords = ClinicRecord::query()
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get()
             ->unique(fn ($item) => $item->first_name . $item->last_name . $item->birthday)
             ->take(5);

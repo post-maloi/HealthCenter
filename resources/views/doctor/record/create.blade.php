@@ -189,6 +189,17 @@
                         </div>
 
                         <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Patient Condition Update</label>
+                            <select name="condition_update" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
+                                <option value="" disabled {{ old('condition_update') ? '' : 'selected' }}>Select condition status...</option>
+                                <option value="recovered" {{ old('condition_update') === 'recovered' ? 'selected' : '' }}>Recovered</option>
+                                <option value="improving" {{ old('condition_update') === 'improving' ? 'selected' : '' }}>Improving</option>
+                                <option value="no_improvement" {{ old('condition_update') === 'no_improvement' ? 'selected' : '' }}>No Improvement</option>
+                                <option value="worsened" {{ old('condition_update') === 'worsened' ? 'selected' : '' }}>Worsened</option>
+                            </select>
+                        </div>
+
+                        <div>
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
                                     <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">P</span>

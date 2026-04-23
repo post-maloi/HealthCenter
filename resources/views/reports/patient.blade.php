@@ -83,7 +83,7 @@
                             </span> <span class="text-gray-300 mx-1">|</span> {{ $record->gender }}
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-600">{{ $record->address_purok }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600 italic">"{{ \Illuminate\Support\Str::limit($record->diagnosis, 40) }}"</td>
+                        <td class="px-6 py-4 text-sm text-gray-600 italic">"{{ \Illuminate\Support\Str::limit($record->resolved_diagnosis ?? $record->diagnosis, 40) }}"</td>
                     </tr>
                 @empty
                     <tr>

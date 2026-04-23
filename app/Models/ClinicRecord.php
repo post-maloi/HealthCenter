@@ -37,6 +37,8 @@ protected $fillable = [
     'subjective', 
     'objective', 
     'diagnosis',
+    'condition_update',
+    'follow_up_recommendation',
     'medicines_given',
     'laboratory_image_path',
     'consulted_by',

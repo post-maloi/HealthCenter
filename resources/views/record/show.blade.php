@@ -3,6 +3,21 @@
 @section('content')
 @php
     $hasValue = fn ($value) => !is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A';
+    $conditionStatus = $record->condition_update ?: 'monitoring';
+    $conditionLabel = match($conditionStatus) {
+        'recovered' => 'Recovered',
+        'improving' => 'Improving',
+        'no_improvement' => 'No Improvement',
+        'worsened' => 'Worsened',
+        default => 'Monitoring',
+    };
+    $conditionClass = match($conditionStatus) {
+        'recovered' => 'bg-emerald-100 text-emerald-700',
+        'improving' => 'bg-yellow-100 text-yellow-700',
+        'no_improvement' => 'bg-orange-100 text-orange-700',
+        'worsened' => 'bg-red-100 text-red-700',
+        default => 'bg-slate-100 text-slate-700',
+    };
 @endphp
 <style>
     @media print {
@@ -118,6 +133,40 @@
                 </div>
             </div>
             @endif
+
+            @if(isset($history) && $history->count() > 0)
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 no-print">
+                <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Recovery Timeline</h2>
+                <div class="space-y-3">
+                    @foreach($history->sortBy('consultation_date')->values() as $visit)
+                        @php
+                            $status = $visit->condition_update ?: 'monitoring';
+                            $statusText = match($status) {
+                                'recovered' => 'Recovered',
+                                'improving' => 'Improving',
+                                'no_improvement' => 'No Improvement',
+                                'worsened' => 'Worsened',
+                                default => 'Monitoring',
+                            };
+                            $statusClass = match($status) {
+                                'recovered' => 'bg-emerald-100 text-emerald-700',
+                                'improving' => 'bg-yellow-100 text-yellow-700',
+                                'no_improvement' => 'bg-orange-100 text-orange-700',
+                                'worsened' => 'bg-red-100 text-red-700',
+                                default => 'bg-slate-100 text-slate-700',
+                            };
+                        @endphp
+                        <div class="flex items-start justify-between gap-2 p-3 rounded-xl border border-gray-100">
+                            <div>
+                                <p class="text-[11px] font-black text-gray-500 uppercase">{{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}</p>
+                                <p class="text-sm font-semibold text-slate-700">{{ $visit->diagnosis }}</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-[10px] font-bold {{ $statusClass }}">{{ $statusText }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
         </div>
 
         {{-- Right Column: SOAP & Vitals --}}
@@ -195,9 +244,18 @@
                     <span class="w-3 h-3 bg-red-500 rounded-full"></span>
                     <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Assessment / Diagnosis</h2>
                 </div>
+                <div class="mb-3">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold {{ $conditionClass }}">{{ $conditionLabel }}</span>
+                </div>
                 <div class="p-6 bg-red-50 rounded-3xl border border-red-100">
                     <p class="text-lg font-bold text-gray-800">{{ $record->diagnosis }}</p>
                 </div>
+                @if(!empty($record->follow_up_recommendation))
+                    <div class="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Follow-up Recommendation</p>
+                        <p class="text-sm text-slate-700 mt-1">{{ $record->follow_up_recommendation }}</p>
+                    </div>
+                @endif
             </div>
 
             {{-- Laboratory Files --}}
