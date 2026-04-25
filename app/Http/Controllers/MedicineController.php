@@ -63,7 +63,41 @@ class MedicineController extends Controller
     public function create()
     {
         $this->ensureDoctorCannotMutateInventory();
-        return view('medicines.create'); 
+
+        $rows = Medicine::query()
+            ->select(['name', 'type'])
+            ->get();
+
+        $dbGenericOptions = [];
+        $dbBrandOptions = [];
+        $dbTypeOptions = [];
+
+        foreach ($rows as $row) {
+            $fullName = trim((string) ($row->name ?? ''));
+            $type = trim((string) ($row->type ?? ''));
+
+            if ($type !== '') {
+                $dbTypeOptions[] = $type;
+            }
+
+            if ($fullName !== '' && preg_match('/^(.*?)\s*\((.*?)\)/', $fullName, $matches)) {
+                $brand = trim((string) ($matches[1] ?? ''));
+                $generic = trim((string) ($matches[2] ?? ''));
+
+                if ($brand !== '') {
+                    $dbBrandOptions[] = $brand;
+                }
+                if ($generic !== '') {
+                    $dbGenericOptions[] = $generic;
+                }
+            }
+        }
+
+        return view('medicines.create', [
+            'dbGenericOptions' => collect($dbGenericOptions)->filter()->unique()->values(),
+            'dbBrandOptions' => collect($dbBrandOptions)->filter()->unique()->values(),
+            'dbTypeOptions' => collect($dbTypeOptions)->filter()->unique()->values(),
+        ]);
     }
 
     /**

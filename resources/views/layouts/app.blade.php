@@ -142,8 +142,8 @@
             </div>
             
             @php
-                $role = auth()->check() ? (auth()->user()->role ?? 'bhw') : 'guest';
-                $isDoctor = in_array($role, ['doctor', 'nurse'], true);
+                $role = auth()->check() ? strtolower((string) (auth()->user()->role ?? 'bhw')) : 'guest';
+                $isDoctor = $role === 'doctor';
                 $isNurse = $role === 'nurse';
                 $isBhw = $role === 'bhw';
                 $isAdmin = $role === 'admin';
@@ -151,6 +151,9 @@
                 $displayName = $authUser?->full_name ?: trim(implode(' ', array_filter([$authUser?->first_name, $authUser?->last_name]))) ?: 'Clinic User';
                 $roleLabel = $authUser ? strtoupper((string) $authUser->role) : 'GUEST';
                 $initials = strtoupper(substr((string) ($authUser?->first_name ?? 'C'), 0, 1) . substr((string) ($authUser?->last_name ?? 'U'), 0, 1));
+                $profilePhotoUrl = (!empty($authUser?->profile_photo_path))
+                    ? asset('storage/'.$authUser->profile_photo_path)
+                    : null;
                 $doctorAvailable = \App\Models\User::query()
                     ->where('role', 'doctor')
                     ->get()
@@ -158,8 +161,8 @@
             @endphp
 
             <nav class="mt-6 flex-1 px-4 space-y-1">
-                <a href="{{ $isAdmin ? route('admin.dashboard') : ($isDoctor ? route('doctor.dashboard') : route('dashboard')) }}"
-                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('dashboard') || request()->routeIs('doctor.dashboard') || request()->routeIs('admin.dashboard') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <a href="{{ $isAdmin ? route('admin.dashboard') : ($isNurse ? route('nurse.dashboard') : ($role === 'doctor' ? route('doctor.dashboard') : route('bhw.dashboard'))) }}"
+                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('dashboard') || request()->routeIs('bhw.dashboard') || request()->routeIs('nurse.dashboard') || request()->routeIs('doctor.dashboard') || request()->routeIs('admin.dashboard') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                     <span class="mr-2 inline-flex align-middle">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10.5L12 3l9 7.5M5.25 9.75V20a1 1 0 001 1h4.5v-5.25a1 1 0 011-1h.5a1 1 0 011 1V21h4.5a1 1 0 001-1V9.75"/>
@@ -168,8 +171,8 @@
                 </a>
                 
                 {{-- Clinic Records (Using wildcard * to stay active when viewing specific records) --}}
-                <a href="{{ $isDoctor ? route('doctor.record.index') : route('record.index') }}" 
-                   class="block py-3 px-4 rounded-lg transition {{ $isDoctor ? (request()->routeIs('doctor.record.*') && !request()->routeIs('doctor.record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') : (request()->routeIs('record.*') && !request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white') }}">
+                <a href="{{ $role === 'doctor' ? route('doctor.record.index') : ($isNurse ? route('nurse.record.index') : ($isBhw ? route('bhw.record.index') : route('record.index'))) }}" 
+                   class="block py-3 px-4 rounded-lg transition {{ ($role === 'doctor' && request()->routeIs('doctor.record.*') && !request()->routeIs('doctor.record.create')) || ($isNurse && request()->routeIs('nurse.record.*') && !request()->routeIs('nurse.record.create')) || ($isBhw && request()->routeIs('bhw.record.*') && !request()->routeIs('bhw.record.create')) || (!$isDoctor && !$isNurse && !$isBhw && request()->routeIs('record.*') && !request()->routeIs('record.create')) ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                     <span class="mr-2 inline-flex align-middle">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -177,8 +180,8 @@
                     </span> Patients
                 </a>
 
-                <a href="{{ route('medicines.index') }}"
-                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <a href="{{ $isBhw ? route('bhw.medicines.index') : route('medicines.index') }}"
+                   class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('medicines.*') || request()->routeIs('bhw.medicines.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                     <span class="mr-2 inline-flex align-middle">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 8.5l7 7m-9.5 1a3.5 3.5 0 010-5l5.5-5.5a3.5 3.5 0 115 5L11 16.5a3.5 3.5 0 01-5 0z"/>
@@ -186,9 +189,9 @@
                     </span> Inventory
                 </a>
 
-                @if($isDoctor)
-                    <a href="{{ route('doctor.pending.index') }}"
-                       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('doctor.pending.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                @if($isDoctor || $isNurse)
+                    <a href="{{ $isDoctor ? route('doctor.pending.index') : route('nurse.pending.index') }}"
+                       class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('doctor.pending.*') || request()->routeIs('nurse.pending.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                         <span class="mr-2 inline-flex align-middle">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 14h6M9 5a1 1 0 000 2h.5a1 1 0 011 1v1.5a3.5 3.5 0 01-1.025 2.475L8.8 13.15a2 2 0 000 2.828l1.175 1.175A3.5 3.5 0 0111 19.628V20a1 1 0 01-1 1H9m6-16a1 1 0 010 2h-.5a1 1 0 00-1 1v1.5a3.5 3.5 0 001.025 2.475L15.2 13.15a2 2 0 010 2.828l-1.175 1.175A3.5 3.5 0 0013 19.628V20a1 1 0 001 1h1"/>
@@ -205,7 +208,7 @@
                     <a href="{{ route('admin.inventory.ledger') }}" class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('admin.inventory.*') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}"><span class="mr-2 inline-flex align-middle"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m-8-4v10l8 4m-8-14l8 4m0 0v10"/></svg></span> Inventory Ledger</a>
                 @endif
 
-                @unless($isDoctor || $isAdmin)
+                @unless($isDoctor || $isAdmin || $isNurse)
                     {{-- Reports Dropdown --}}
                     @if($isBhw)
                     <div class="pt-1">
@@ -218,12 +221,12 @@
                             </svg>
                         </button>
                         <div id="reports-menu" class="ml-4 mt-1 space-y-1 {{ request()->routeIs('reports.*') ? '' : 'hidden' }}">
-                            <a href="{{ route('reports.diagnosis') }}"
-                               class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.diagnosis') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            <a href="{{ route('bhw.reports.diagnosis') }}"
+                               class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.diagnosis') || request()->routeIs('bhw.reports.diagnosis') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                                 <span class="mr-2 inline-flex align-middle"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 20h14a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v14a1 1 0 001 1z"/></svg></span>Diagnosis
                             </a>
-                            <a href="{{ route('reports.patients') }}"
-                               class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.patients') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            <a href="{{ route('bhw.reports.patients') }}"
+                               class="block py-2 px-4 rounded-lg text-sm transition {{ request()->routeIs('reports.patients') || request()->routeIs('bhw.reports.patients') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                                 <span class="mr-2 inline-flex align-middle"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>Patient
                             </a>
                         </div>
@@ -231,21 +234,13 @@
                     @endif
 
                     <div class="pt-4 mt-4 border-t border-slate-800">
-                        <a href="{{ $isNurse ? route('record.index') : route('record.create') }}" 
-                           class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
-                            @if($isNurse)
-                                <span class="mr-2 inline-flex align-middle text-blue-500">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                </span> Nurse Vitals / Triage
-                            @else
-                                <span class="mr-2 inline-flex align-middle text-blue-500">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                </span> Add New Consultation
-                            @endif
+                        <a href="{{ route('bhw.record.create') }}" 
+                           class="block py-3 px-4 rounded-lg transition {{ request()->routeIs('record.create') || request()->routeIs('bhw.record.create') ? 'bg-slate-800 text-white border-l-4 border-blue-500' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                            <span class="mr-2 inline-flex align-middle text-blue-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                            </span> Add New Consultation
                         </a>
                     </div>
                 @endunless
@@ -254,9 +249,13 @@
 
             <div class="p-4 border-t border-slate-800 relative" x-data="{ openUserMenu: false }">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full bg-slate-700 text-slate-100 flex items-center justify-center text-xs font-black">
-                        {{ $initials }}
-                    </div>
+                    @if($profilePhotoUrl)
+                        <img src="{{ $profilePhotoUrl }}" alt="Profile photo" class="w-9 h-9 rounded-full object-cover border border-slate-600">
+                    @else
+                        <div class="w-9 h-9 rounded-full bg-slate-700 text-slate-100 flex items-center justify-center text-xs font-black">
+                            {{ $initials }}
+                        </div>
+                    @endif
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-slate-100 truncate">{{ $displayName }}</p>
                         <p class="text-xs text-slate-400 truncate">{{ $roleLabel }}</p>
@@ -276,6 +275,10 @@
                     x-transition
                     style="display:none;"
                     class="absolute left-4 right-4 bottom-16 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50">
+                    <a href="{{ route('profile.show') }}" class="w-full text-left py-3 px-4 text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition border-b border-slate-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        View Profile
+                    </a>
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
                         <button type="submit" class="w-full text-left py-3 px-4 text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition">

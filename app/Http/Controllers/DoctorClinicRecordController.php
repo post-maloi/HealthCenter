@@ -115,7 +115,6 @@ class DoctorClinicRecordController extends Controller
     private function recommendationForStatus(string $status): string
     {
         return match ($status) {
-            'initial_assessment' => 'First consultation baseline recorded; continue care plan and schedule follow-up as clinically indicated.',
             'recovered' => 'Continue home care and routine preventive follow-up.',
             'improving' => 'Continue current treatment and monitor progress on next visit.',
             'no_improvement' => 'Recommend further laboratory testing.',
@@ -126,12 +125,7 @@ class DoctorClinicRecordController extends Controller
 
     private function allowedConditionUpdateValues(): array
     {
-        $base = ['recovered', 'improving', 'no_improvement', 'worsened'];
-        if (in_array($this->currentRole(), ['doctor', 'nurse'], true)) {
-            return array_merge(['initial_assessment'], $base);
-        }
-
-        return $base;
+        return ['recovered', 'improving', 'no_improvement', 'worsened'];
     }
 
     private function buildRecoveryMonitoring(): array

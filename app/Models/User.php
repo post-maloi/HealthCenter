@@ -28,6 +28,7 @@ class User extends Authenticatable
     'role',
     'is_active',
     'doctor_availability_override',
+    'profile_photo_path',
 ];
 
     /**

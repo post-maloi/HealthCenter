@@ -192,9 +192,6 @@
                             <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Patient Condition Update</label>
                             <select name="condition_update" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
                                 <option value="" disabled {{ old('condition_update') ? '' : 'selected' }}>Select condition status...</option>
-                                @if(in_array(auth()->user()->role ?? '', ['doctor', 'nurse'], true))
-                                <option value="initial_assessment" {{ old('condition_update') === 'initial_assessment' ? 'selected' : '' }}>Initial Assessment</option>
-                                @endif
                                 <option value="recovered" {{ old('condition_update') === 'recovered' ? 'selected' : '' }}>Recovered</option>
                                 <option value="improving" {{ old('condition_update') === 'improving' ? 'selected' : '' }}>Improving</option>
                                 <option value="no_improvement" {{ old('condition_update') === 'no_improvement' ? 'selected' : '' }}>No Improvement</option>

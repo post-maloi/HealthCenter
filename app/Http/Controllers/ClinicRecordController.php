@@ -234,10 +234,19 @@ class ClinicRecordController extends Controller
     {
         $record = ClinicRecord::with('medicines')->findOrFail($id);
         $allMedicines = $this->getDispensableMedicinesForSelection();
+        $addressOptions = ClinicRecord::query()
+            ->whereNotNull('address_purok')
+            ->where('address_purok', '!=', '')
+            ->select('address_purok')
+            ->distinct()
+            ->orderBy('address_purok')
+            ->pluck('address_purok')
+            ->values();
 
         return view('record.edit', [
             'record' => $record,
             'allMedicines' => $allMedicines,
+            'addressOptions' => $addressOptions,
         ]);
     }
 

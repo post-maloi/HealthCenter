@@ -2,12 +2,17 @@
 
 @section('content')
 <div class="max-w-3xl mx-auto space-y-6">
-    <div>
-        <h1 class="text-2xl font-bold text-slate-800">Edit User</h1>
-        <p class="text-sm text-slate-500">{{ $user->email }}</p>
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">Edit User</h1>
+            <p class="text-sm text-slate-500">{{ $user->email }}</p>
+        </div>
+        <a href="{{ route('admin.users.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50">
+            Back
+        </a>
     </div>
 
-    <form method="POST" action="{{ route('admin.users.update', $user) }}" class="bg-white p-6 rounded-xl border space-y-4">
+    <form method="POST" action="{{ route('admin.users.update', $user) }}" enctype="multipart/form-data" class="bg-white p-6 rounded-xl border space-y-4">
         @csrf
         @method('PUT')
         @include('admin.users._form')

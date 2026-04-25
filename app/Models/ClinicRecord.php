@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class ClinicRecord extends Model
 {
@@ -63,5 +64,28 @@ protected $fillable = [
         }
 
         return 'waiting_for_doctor';
+    }
+
+    public function scopeLatestPerPatient(Builder $query): Builder
+    {
+        return $query->whereIn('id', function ($subQuery) {
+            $subQuery->selectRaw('MAX(id)')
+                ->from('clinic_records')
+                ->groupBy('first_name', 'last_name', 'birthday');
+        });
+    }
+
+    public function scopeForBhwDashboard(Builder $query): Builder
+    {
+        return $query->latestPerPatient()
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc');
+    }
+
+    public function scopeForDoctorNurseDashboard(Builder $query): Builder
+    {
+        return $query->latestPerPatient()
+            ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc');
     }
 }

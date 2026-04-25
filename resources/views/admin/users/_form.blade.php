@@ -37,6 +37,22 @@
         <input type="text" name="password" value="{{ old('password') }}" class="w-full border rounded-lg px-3 py-2" required>
     </div>
     @endunless
+
+    <div class="md:col-span-2">
+        <label class="block text-sm font-medium mb-1">Add Profile (Optional)</label>
+        <input type="file" name="profile_photo" accept=".jpg,.jpeg,.png,.webp" class="w-full border rounded-lg px-3 py-2 bg-white">
+        <p class="text-xs text-slate-500 mt-1">Accepted: JPG, PNG, WEBP (max 2MB)</p>
+
+        @if($editing && !empty($user->profile_photo_path))
+            <div class="mt-3 flex items-center gap-3">
+                <img src="{{ asset('storage/'.$user->profile_photo_path) }}" alt="Profile photo" class="w-14 h-14 rounded-full object-cover border border-slate-200">
+                <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <input type="checkbox" name="remove_profile_photo" value="1">
+                    Remove current profile photo
+                </label>
+            </div>
+        @endif
+    </div>
 </div>
 <label class="inline-flex items-center gap-2 mt-4">
     <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $user->is_active ?? true))>

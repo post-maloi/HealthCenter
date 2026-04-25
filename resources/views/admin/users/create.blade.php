@@ -8,7 +8,7 @@
             Back
         </a>
     </div>
-    <form method="POST" action="{{ route('admin.users.store') }}" class="bg-white p-6 rounded-xl border space-y-4">
+    <form method="POST" action="{{ route('admin.users.store') }}" enctype="multipart/form-data" class="bg-white p-6 rounded-xl border space-y-4">
         @csrf
         @include('admin.users._form')
         <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold">Create User</button>

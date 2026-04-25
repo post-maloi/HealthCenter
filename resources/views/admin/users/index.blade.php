@@ -28,7 +28,18 @@
             <tbody>
                 @forelse($users as $user)
                 <tr class="border-t">
-                    <td class="px-4 py-3 font-medium">{{ $user->full_name }}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            @if(!empty($user->profile_photo_path))
+                                <img src="{{ asset('storage/'.$user->profile_photo_path) }}" alt="{{ $user->full_name }}" class="w-8 h-8 rounded-full object-cover border border-slate-200">
+                            @else
+                                <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold">
+                                    {{ strtoupper(substr((string) ($user->first_name ?? 'U'), 0, 1) . substr((string) ($user->last_name ?? ''), 0, 1)) }}
+                                </div>
+                            @endif
+                            <span class="font-medium">{{ $user->full_name }}</span>
+                        </div>
+                    </td>
                     <td class="px-4 py-3">{{ $user->email }}</td>
                     <td class="px-4 py-3 uppercase">{{ $user->role }}</td>
                     <td class="px-4 py-3">

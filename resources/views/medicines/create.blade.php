@@ -23,7 +23,13 @@
             <div class="space-y-5">
                 {{-- Generic Name Search Dropdown --}}
                 <div>
-                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Generic Name</label>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Generic Name</label>
+                        <label class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600">
+                            <input type="checkbox" id="generic_add_new" class="rounded border-gray-300">
+                            Add New
+                        </label>
+                    </div>
                     <div class="relative" id="genericDropdownWrap">
                         <input type="text" id="generic_name" placeholder="Search or type generic name..." required autocomplete="off"
                             class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
@@ -33,7 +39,13 @@
 
                 {{-- Brand Name Input --}}
                 <div>
-                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Brand Name</label>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Brand Name</label>
+                        <label class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600">
+                            <input type="checkbox" id="brand_add_new" class="rounded border-gray-300">
+                            Add New
+                        </label>
+                    </div>
                     <div class="relative" id="brandDropdownWrap">
                         <input type="text" id="brand_name" placeholder="Search or type brand name..." required autofocus autocomplete="off"
                             class="w-full px-5 py-3.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-base font-medium transition">
@@ -43,7 +55,13 @@
 
                 {{-- Type --}}
                 <div>
-                    <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Type</label>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</label>
+                        <label class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-600">
+                            <input type="checkbox" id="type_add_new" class="rounded border-gray-300">
+                            Add New
+                        </label>
+                    </div>
                     <div class="relative" id="medicineTypeDropdownWrap">
                         <input type="hidden" name="type" id="medicine_type" required>
                         <input type="text" id="medicine_type_search" placeholder="Search or type medicine type..." autocomplete="off"
@@ -171,11 +189,17 @@
         'Eye Drops',
         'Nebule',
     ];
+    const dbGenericOptions = @json(($dbGenericOptions ?? collect())->values());
+    const dbBrandOptions = @json(($dbBrandOptions ?? collect())->values());
+    const dbTypeOptions = @json(($dbTypeOptions ?? collect())->values());
 
     const typeWrap = document.getElementById('medicineTypeDropdownWrap');
     const typeSearchInput = document.getElementById('medicine_type_search');
     const typeHiddenInput = document.getElementById('medicine_type');
     const typeDropdown = document.getElementById('medicine_type_dropdown');
+    const genericAddNewToggle = document.getElementById('generic_add_new');
+    const brandAddNewToggle = document.getElementById('brand_add_new');
+    const typeAddNewToggle = document.getElementById('type_add_new');
     const genericWrap = document.getElementById('genericDropdownWrap');
     const genericInput = document.getElementById('generic_name');
     const genericDropdown = document.getElementById('generic_dropdown');
@@ -183,16 +207,45 @@
     const brandInput = document.getElementById('brand_name');
     const brandDropdown = document.getElementById('brand_dropdown');
 
-    function renderAlphabeticalDropdown(dropdownEl, options, inputEl, filter = '', emptyText = 'No matching item found.') {
+    function stringOptions(options) {
+        return options.filter(item => typeof item === 'string').map(item => item.toLowerCase());
+    }
+
+    function existsInOptions(value, options) {
+        return stringOptions(options).includes((value || '').trim().toLowerCase());
+    }
+
+    dbGenericOptions.forEach(item => {
+        if (!existsInOptions(item, genericOptions)) {
+            genericOptions.push(item);
+        }
+    });
+    dbBrandOptions.forEach(item => {
+        if (!existsInOptions(item, brandOptions)) {
+            brandOptions.push(item);
+        }
+    });
+    dbTypeOptions.forEach(item => {
+        if (!existsInOptions(item, medicineTypes)) {
+            medicineTypes.push(item);
+        }
+    });
+
+    function renderAlphabeticalDropdown(dropdownEl, options, inputEl, addNewToggle, filter = '', emptyText = 'No matching item found.') {
         const query = filter.trim().toLowerCase();
         dropdownEl.innerHTML = '';
 
         if (query) {
             const matches = options.filter(item => typeof item === 'string' && item.toLowerCase().includes(query));
             if (matches.length === 0) {
-                const empty = document.createElement('div');
-                empty.className = 'px-4 py-2.5 text-sm text-gray-400';
-                empty.textContent = emptyText;
+                const empty = document.createElement('button');
+                empty.type = 'button';
+                empty.className = 'w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50';
+                empty.textContent = `+ Add "${inputEl.value.trim()}" as new`;
+                empty.addEventListener('click', function () {
+                    addNewToggle.checked = true;
+                    dropdownEl.classList.add('hidden');
+                });
                 dropdownEl.appendChild(empty);
                 return;
             }
@@ -204,6 +257,7 @@
                 option.textContent = name;
                 option.addEventListener('click', function () {
                     inputEl.value = name;
+                    addNewToggle.checked = false;
                     dropdownEl.classList.add('hidden');
                 });
                 dropdownEl.appendChild(option);
@@ -220,6 +274,7 @@
                 option.textContent = item;
                 option.addEventListener('click', function () {
                     inputEl.value = item;
+                    addNewToggle.checked = false;
                     dropdownEl.classList.add('hidden');
                 });
                 dropdownEl.appendChild(option);
@@ -238,6 +293,7 @@
             genericDropdown,
             genericOptions,
             genericInput,
+            genericAddNewToggle,
             filter,
             'No matching generic name found.'
         );
@@ -247,6 +303,7 @@
             brandDropdown,
             brandOptions,
             brandInput,
+            brandAddNewToggle,
             filter,
             'No matching brand name found.'
         );
@@ -258,9 +315,15 @@
         typeDropdown.innerHTML = '';
 
         if (filteredTypes.length === 0) {
-            const empty = document.createElement('div');
-            empty.className = 'px-4 py-2.5 text-sm text-gray-400';
-            empty.textContent = 'No matching type found.';
+            const empty = document.createElement('button');
+            empty.type = 'button';
+            empty.className = 'w-full text-left px-4 py-2.5 text-sm text-blue-600 font-semibold hover:bg-blue-50';
+            empty.textContent = `+ Add "${typeSearchInput.value.trim()}" as new`;
+            empty.addEventListener('click', function () {
+                typeHiddenInput.value = typeSearchInput.value.trim();
+                typeAddNewToggle.checked = true;
+                typeDropdown.classList.add('hidden');
+            });
             typeDropdown.appendChild(empty);
             return;
         }
@@ -273,6 +336,7 @@
             option.addEventListener('click', function () {
                 typeSearchInput.value = type;
                 typeHiddenInput.value = type;
+                typeAddNewToggle.checked = false;
                 typeDropdown.classList.add('hidden');
             });
             typeDropdown.appendChild(option);
@@ -287,6 +351,9 @@
     typeSearchInput.addEventListener('input', function () {
         const typed = typeSearchInput.value.trim();
         typeHiddenInput.value = typed;
+        if (existsInOptions(typed, medicineTypes)) {
+            typeAddNewToggle.checked = false;
+        }
         renderTypeOptions(typed);
         typeDropdown.classList.remove('hidden');
     });
@@ -297,6 +364,9 @@
     });
 
     genericInput.addEventListener('input', function () {
+        if (existsInOptions(genericInput.value, genericOptions)) {
+            genericAddNewToggle.checked = false;
+        }
         renderGenericOptions(genericInput.value);
         genericDropdown.classList.remove('hidden');
     });
@@ -306,6 +376,9 @@
     });
 
     brandInput.addEventListener('input', function () {
+        if (existsInOptions(brandInput.value, brandOptions)) {
+            brandAddNewToggle.checked = false;
+        }
         renderBrandOptions(brandInput.value);
         brandDropdown.classList.remove('hidden');
     });
@@ -328,6 +401,28 @@
         const dosageValue = document.getElementById('dosage_value').value.trim();
         const dosageUnit = document.getElementById('dosage_unit').value.trim();
         const type = document.getElementById('medicine_type').value.trim();
+
+        const genericIsExisting = existsInOptions(generic, genericOptions);
+        const brandIsExisting = existsInOptions(brand, brandOptions);
+        const typeIsExisting = existsInOptions(type, medicineTypes);
+
+        if (!genericIsExisting && !genericAddNewToggle.checked) {
+            e.preventDefault();
+            alert('Generic Name is new. Check "Add New" beside Generic Name to continue.');
+            return;
+        }
+
+        if (!brandIsExisting && !brandAddNewToggle.checked) {
+            e.preventDefault();
+            alert('Brand Name is new. Check "Add New" beside Brand Name to continue.');
+            return;
+        }
+
+        if (!typeIsExisting && !typeAddNewToggle.checked) {
+            e.preventDefault();
+            alert('Type is new. Check "Add New" beside Type to continue.');
+            return;
+        }
         
         // Combines them into "Brand (Generic) 500mg Tablet" format before sending to Controller
         document.getElementById('combined_name').value = `${brand} (${generic}) ${dosageValue}${dosageUnit} ${type}`.trim();

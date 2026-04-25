@@ -59,8 +59,30 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">Purok / Address</label>
-                    <input type="text" name="address_purok" value="{{ old('address_purok', $record->address_purok) }}" required {{ $isNurse ? 'readonly' : '' }}
-                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition">
+                    @if($isBhw)
+                        @php
+                            $defaultAddressOptions = collect(['BAYANIHAN', 'TABUNON', 'GABI', 'BALAANONG TUBIG', 'BALAHAN', 'RIBOMA', 'PAG-ASA', 'PUROK-ANO']);
+                            $selectedAddress = old('address_purok', $record->address_purok);
+                            $addressList = $defaultAddressOptions
+                                ->merge($addressOptions ?? collect())
+                                ->push($selectedAddress)
+                                ->filter()
+                                ->map(fn ($value) => strtoupper(trim((string) $value)))
+                                ->unique()
+                                ->values();
+                        @endphp
+                        <select name="address_purok" required class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition bg-white">
+                            <option value="" disabled {{ $selectedAddress ? '' : 'selected' }}>Select address</option>
+                            @foreach($addressList as $address)
+                                <option value="{{ $address }}" {{ strtoupper((string) $selectedAddress) === $address ? 'selected' : '' }}>
+                                    {{ $address }}
+                                </option>
+                            @endforeach
+                        </select>
+                    @else
+                        <input type="text" name="address_purok" value="{{ old('address_purok', $record->address_purok) }}" required {{ $isNurse ? 'readonly' : '' }}
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 outline-none transition">
+                    @endif
                 </div>
             </div>
 

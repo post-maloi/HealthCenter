@@ -8,6 +8,7 @@ use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -49,12 +50,19 @@ class UserManagementController extends Controller
             'role' => ['required', Rule::in(['admin', 'bhw', 'nurse', 'doctor'])],
             'password' => 'required|string|min:8',
             'is_active' => 'nullable|boolean',
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
+
+        $profilePhotoPath = null;
+        if ($request->hasFile('profile_photo')) {
+            $profilePhotoPath = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
 
         $user = User::create([
             ...$validated,
             'password' => Hash::make($validated['password']),
             'is_active' => $request->boolean('is_active', true),
+            'profile_photo_path' => $profilePhotoPath,
         ]);
 
         ActivityLogger::log('user_created', "Created user {$user->email}", $user, $request);
@@ -77,6 +85,8 @@ class UserManagementController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::in(['admin', 'bhw', 'nurse', 'doctor'])],
             'is_active' => 'nullable|boolean',
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'remove_profile_photo' => 'nullable|boolean',
         ]);
 
         // Prevent self-demotion to avoid accidental lockout of admin center.
@@ -84,6 +94,19 @@ class UserManagementController extends Controller
             return back()->withErrors(['role' => 'You cannot remove your own admin role.'])->withInput();
         }
 
+        if ($request->boolean('remove_profile_photo') && $user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
+            $validated['profile_photo_path'] = null;
+        }
+
+        if ($request->hasFile('profile_photo')) {
+            if ($user->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+            $validated['profile_photo_path'] = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
+
+        unset($validated['remove_profile_photo']);
         $validated['is_active'] = $request->boolean('is_active', true);
         $user->update($validated);
         ActivityLogger::log('user_updated', "Updated user {$user->email}", $user, $request);
