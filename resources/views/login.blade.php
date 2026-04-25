@@ -28,9 +28,9 @@
             {{-- The responsive positioning ensures it peeks in correctly on desktop but stays managed on mobile --}}
             <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[72%] md:h-[60%] z-20 pointer-events-none">
     <img 
-        src="https://img.freepik.com/free-psd/3d-illustration-cartoon-character-doctor-medical-assistant_1150-62164.jpg" 
-        alt="3D Doctor Character peeking"
-        class="w-full h-full object-contain object-bottom transform scale-x-[-1]" 
+        src="{{ asset('images/login-clinic-logo.png') }}" 
+        alt="Barangay Banilad Dumaguete City Logo"
+        class="w-full h-full object-contain object-bottom" 
     />
 </div>
             

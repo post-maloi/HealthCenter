@@ -156,7 +156,8 @@ Route::middleware('auth')->group(function () {
         });
     });
 
-    // Logout
+    // Logout (GET fallback avoids 419 on stale CSRF token)
+    Route::get('/logout', [AuthController::class, 'logout'])->name('logout.get');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/profile', function () {
         return view('profile.show', ['user' => Auth::user()]);

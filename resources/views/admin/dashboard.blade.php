@@ -6,6 +6,8 @@
         ->where('role', 'doctor')
         ->get()
         ->contains(fn ($user) => $user->is_doctor_available);
+    $clinicName = \App\Models\Setting::getValue('clinic_name', 'Barangay Banilad Health Care Center') ?: 'Barangay Banilad Health Care Center';
+    $clinicAddress = \App\Models\Setting::getValue('clinic_address', 'Centralized operations and system insights.') ?: 'Centralized operations and system insights.';
 @endphp
 
 <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
@@ -16,8 +18,8 @@
                 Doctor Available
             </div>
             <div>
-                <h1 class="text-5xl font-black text-slate-800 tracking-tight">Admin Control Center</h1>
-                <p class="text-sm text-slate-500">Centralized operations and system insights.</p>
+                <h1 class="text-5xl font-black text-slate-800 tracking-tight">{{ $clinicName }}</h1>
+                <p class="text-sm text-slate-500">{{ $clinicAddress }}</p>
             </div>
         </div>
         <div class="flex items-start gap-6">
@@ -35,19 +37,73 @@
     </div>
 
     <div class="rounded-2xl border border-blue-900/60 bg-gradient-to-r from-[#0f2c77] via-[#123785] to-[#0e2765] px-4 py-3 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm font-black text-white">Quick Actions</p>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ route('record.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/90 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-blue-500 transition">
-                    <span>Register New Patient</span>
-                </a>
-                <a href="{{ route('medicines.index') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-900/40 border border-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-900/60 transition">
-                    <span>Check Inventory</span>
-                </a>
-                <a href="{{ route('record.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-slate-900/40 border border-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-900/60 transition">
-                    <span>Log Consultation</span>
-                </a>
-            </div>
+        <p class="inline-flex items-center gap-2 text-sm font-black text-white mb-3">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/10 border border-white/15">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L11.2 4.72"/>
+                    <path d="M14 11a5 5 0 0 0-7.07 0L4.1 13.83a5 5 0 0 0 7.07 7.07L12.8 19.3"/>
+                </svg>
+            </span>
+            Quick Actions
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+            <a href="{{ route('record.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Patients</span>
+            </a>
+            <a href="{{ route('medicines.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 8.5l7 7m-9.5 1a3.5 3.5 0 010-5l5.5-5.5a3.5 3.5 0 115 5L11 16.5a3.5 3.5 0 01-5 0z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Inventory</span>
+            </a>
+            <a href="{{ route('admin.users.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2a3 3 0 00-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">User Management</span>
+            </a>
+            <a href="{{ route('admin.reports.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6m4 6V7m4 10v-3M5 20h14a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Reports</span>
+            </a>
+            <a href="{{ route('admin.activity-logs.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Activity Logs</span>
+            </a>
+            <a href="{{ route('admin.settings.index') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.983 5.25c.472-1.52 2.562-1.52 3.034 0a1.75 1.75 0 002.624 1.016c1.34-.85 2.817.627 1.967 1.967a1.75 1.75 0 001.016 2.624c1.52.472 1.52 2.562 0 3.034a1.75 1.75 0 00-1.016 2.624c.85 1.34-.627 2.817-1.967 1.967a1.75 1.75 0 00-2.624 1.016c-.472 1.52-2.562 1.52-3.034 0a1.75 1.75 0 00-2.624-1.016c-1.34.85-2.817-.627-1.967-1.967a1.75 1.75 0 00-1.016-2.624c-1.52-.472-1.52-2.562 0-3.034a1.75 1.75 0 001.016-2.624c-.85-1.34.627-2.817 1.967-1.967a1.75 1.75 0 002.624-1.016z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Settings</span>
+            </a>
+            <a href="{{ route('admin.inventory.ledger') }}" class="group rounded-xl border border-white/15 bg-white/95 px-2 py-2 text-center text-slate-700 hover:bg-blue-50 transition">
+                <span class="mx-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#123785] text-white group-hover:bg-[#0f2c77]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m-8-4v10l8 4m-8-14l8 4m0 0v10"/>
+                    </svg>
+                </span>
+                <span class="mt-1.5 block text-[11px] font-bold leading-tight">Inventory Ledger</span>
+            </a>
         </div>
     </div>
 

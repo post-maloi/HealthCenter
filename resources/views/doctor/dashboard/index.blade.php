@@ -4,6 +4,8 @@
 @php
     $isNurseRole = (auth()->user()->role ?? '') === 'nurse';
     $recordIndexRoute = $isNurseRole ? route('nurse.record.index') : route('doctor.record.index');
+    $clinicName = \App\Models\Setting::getValue('clinic_name', 'Barangay Banilad Health Care Center') ?: 'Barangay Banilad Health Care Center';
+    $clinicAddress = \App\Models\Setting::getValue('clinic_address', 'Daily summary and center management overview') ?: 'Daily summary and center management overview';
 @endphp
 <div class="max-w-7xl mx-auto">
     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 space-y-4 shadow-sm">
@@ -15,8 +17,8 @@
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 space-y-4">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h1 class="text-5xl font-black text-slate-800">Barangay Banilad Health Care Center</h1>
-                    <p class="text-sm text-slate-500 mt-1">Daily summary and center management overview</p>
+                    <h1 class="text-5xl font-black text-slate-800">{{ $clinicName }}</h1>
+                    <p class="text-sm text-slate-500 mt-1">{{ $clinicAddress }}</p>
                 </div>
                 <div class="text-right">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Date</p>

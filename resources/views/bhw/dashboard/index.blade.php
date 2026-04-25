@@ -6,6 +6,8 @@
         ->where('role', 'doctor')
         ->get()
         ->contains(fn ($user) => $user->is_doctor_available);
+    $clinicName = \App\Models\Setting::getValue('clinic_name', 'Barangay Banilad Health Care Center') ?: 'Barangay Banilad Health Care Center';
+    $clinicAddress = \App\Models\Setting::getValue('clinic_address', 'Daily summary and center management overview') ?: 'Daily summary and center management overview';
 @endphp
 
 <div class="max-w-7xl mx-auto">
@@ -17,8 +19,8 @@
 
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
-                <h1 class="text-4xl font-black text-slate-800">Barangay Banilad Health Care Center</h1>
-                <p class="text-slate-500 mt-1 text-sm">Daily summary and center management overview</p>
+                <h1 class="text-4xl font-black text-slate-800">{{ $clinicName }}</h1>
+                <p class="text-slate-500 mt-1 text-sm">{{ $clinicAddress }}</p>
             </div>
             <div class="text-right">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Date</p>

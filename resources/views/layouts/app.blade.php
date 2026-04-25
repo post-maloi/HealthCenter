@@ -138,7 +138,17 @@
         
         <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-10">
             <div class="p-6 text-xl font-bold border-b border-slate-800 flex items-center gap-2">
-                <span class="text-blue-500">✚</span> Brgy. Banilad Health Center
+                @php
+                    $clinicName = \App\Models\Setting::getValue('clinic_name', 'Brgy. Banilad Health Center') ?: 'Brgy. Banilad Health Center';
+                    $clinicLogoPath = \App\Models\Setting::getValue('clinic_logo');
+                    $clinicLogoUrl = $clinicLogoPath ? asset('storage/' . ltrim($clinicLogoPath, '/')) : null;
+                @endphp
+                @if($clinicLogoUrl)
+                    <img src="{{ $clinicLogoUrl }}" alt="Clinic logo" class="w-7 h-7 rounded-md object-cover border border-slate-700">
+                @else
+                    <span class="text-blue-500">✚</span>
+                @endif
+                <span class="leading-tight">{{ $clinicName }}</span>
             </div>
             
             @php
@@ -279,13 +289,10 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         View Profile
                     </a>
-                    <form action="{{ route('logout') }}" method="POST">
-                        @csrf
-                        <button type="submit" class="w-full text-left py-3 px-4 text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                            Log Out
-                        </button>
-                    </form>
+                    <a href="{{ route('logout.get') }}" class="w-full text-left py-3 px-4 text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Log Out
+                    </a>
                 </div>
             </div>
         </aside>
