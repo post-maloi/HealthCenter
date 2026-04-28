@@ -7,11 +7,6 @@
 @endphp
 <div class="max-w-7xl mx-auto">
     <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 space-y-4 shadow-sm">
-        <div class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            Doctor Available
-        </div>
-
         <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 md:p-6 space-y-4">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
@@ -21,14 +16,6 @@
                 <div class="text-right">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Date</p>
                     <p class="text-4xl font-black text-slate-700">{{ now()->format('F d, Y') }}</p>
-                    @if((auth()->user()->role ?? '') === 'doctor')
-                        <form method="POST" action="{{ route('doctor.availability.toggle') }}" class="mt-2">
-                            @csrf
-                            <button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition">
-                                Set {{ $isDoctorAvailable ? 'Inactive' : 'Active' }}
-                            </button>
-                        </form>
-                    @endif
                 </div>
             </div>
 

@@ -6,6 +6,7 @@
     $isNurse = $role === 'nurse';
     $isDoctorRole = $role === 'doctor';
     $isBhwRole = $role === 'bhw';
+    $canEncodeFindings = $isNurse;
 @endphp
 {{-- 1. ADD SELECT2 DEPENDENCIES --}}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -231,7 +232,13 @@
                     <div class="space-y-6">
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Subjective Findings</label>
-                            <textarea name="subjective" rows="2" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition text-sm" placeholder="Patient's complaints..."></textarea>
+                            <textarea
+                                name="subjective"
+                                rows="2"
+                                {{ $canEncodeFindings ? '' : 'readonly onclick=showNurseOnlyNotice(\'Subjective Findings\')' }}
+                                class="w-full p-4 border rounded-2xl outline-none transition text-sm {{ $canEncodeFindings ? 'bg-gray-50 border-gray-100 focus:ring-2 focus:ring-blue-100 focus:bg-white' : 'bg-gray-50 border-gray-100 text-gray-500 cursor-not-allowed' }}"
+                                placeholder="{{ $canEncodeFindings ? 'Patient\'s complaints...' : 'Only nurse can fill this out.' }}"
+                            ></textarea>
                         </div>
 
                         {{-- VITALS GRID --}}
@@ -256,13 +263,22 @@
                                 <div>
                                     <input type="text" name="rr" placeholder="RR (cpm)" class="w-full p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-100 text-sm">
                                 </div>
+                                <div class="md:col-span-2">
+                                    <input type="text" id="quick_bmi_display" placeholder="BMI (Auto)" readonly class="w-full p-3 bg-blue-50 border border-blue-100 rounded-xl outline-none text-sm font-semibold text-blue-700">
+                                </div>
                             </div>
                         </div>
 
                         {{-- PHYSICAL EXAM (OBJECTIVE) --}}
                         <div>
                             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 ml-1">Physical Exam (Objective)</label>
-                            <textarea name="objective" rows="2" class="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-100 focus:bg-white transition text-sm" placeholder="Findings from physical examination..."></textarea>
+                            <textarea
+                                name="objective"
+                                rows="2"
+                                {{ $canEncodeFindings ? '' : 'readonly onclick=showNurseOnlyNotice(\'Objective Findings\')' }}
+                                class="w-full p-4 border border-gray-100 rounded-2xl outline-none transition text-sm {{ $canEncodeFindings ? 'bg-gray-50 focus:ring-2 focus:ring-blue-100 focus:bg-white' : 'bg-gray-50 text-gray-500 cursor-not-allowed' }}"
+                                placeholder="{{ $canEncodeFindings ? 'Findings from physical examination...' : 'Only nurse can fill this out.' }}"
+                            ></textarea>
                         </div>
 
                         {{-- BHW: diagnosis is reserved for doctor --}}
@@ -480,6 +496,23 @@ function closeQuickAdd() {
     document.body.style.overflow = 'auto';
 }
 
+function showNurseOnlyNotice(sectionName) {
+    const existing = document.getElementById('nurse-only-alert');
+    if (existing) existing.remove();
+
+    const alert = document.createElement('div');
+    alert.id = 'nurse-only-alert';
+    alert.className = 'fixed top-5 right-5 z-[9999] bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold';
+    alert.textContent = `${sectionName} can only be filled out by a Nurse.`;
+    document.body.appendChild(alert);
+
+    setTimeout(() => {
+        alert.style.opacity = '0';
+        alert.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => alert.remove(), 300);
+    }, 2200);
+}
+
 // BMI AUTO CALCULATION
 document.addEventListener('input', function (e) {
     if (e.target.id === 'quick_weight' || e.target.id === 'quick_height') {
@@ -490,6 +523,10 @@ document.addEventListener('input', function (e) {
             const heightM = heightCm / 100;
             const bmi = (weight / (heightM * heightM)).toFixed(2);
             document.getElementById('modal_bmi').value = bmi;
+            document.getElementById('quick_bmi_display').value = bmi;
+        } else {
+            document.getElementById('modal_bmi').value = 'N/A';
+            document.getElementById('quick_bmi_display').value = '';
         }
     }
 });

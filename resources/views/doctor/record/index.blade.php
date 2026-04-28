@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $roleNormalized = strtolower(trim((string) (auth()->user()->role ?? 'doctor')));
+    $routePrefix = $roleNormalized === 'nurse' ? 'nurse' : 'doctor';
+@endphp
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
@@ -118,7 +122,7 @@
                     
                     <td class="px-6 py-4 text-right">
                         <div class="flex justify-end gap-3">
-                            <a href="{{ route('doctor.record.show', $record->id) }}" 
+                            <a href="{{ route($routePrefix . '.record.show', $record->id) }}" 
                                class="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-800 hover:text-white transition-all shadow-sm">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -141,7 +145,7 @@
     <div class="flex items-center justify-center min-h-screen px-4">
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeQuickAdd()"></div>
         <div class="relative bg-white rounded-3xl shadow-2xl sm:max-w-xl w-full overflow-hidden border border-gray-100">
-            <form action="{{ route('doctor.record.store') }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route($routePrefix . '.record.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="patient_record_id" id="modal_patient_record_id">
                 <input type="hidden" name="consultation_date" value="{{ now()->format('Y-m-d') }}">

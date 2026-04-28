@@ -138,6 +138,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [DoctorClinicRecordController::class, 'index'])->name('index');
             Route::get('/create', [DoctorClinicRecordController::class, 'create'])->name('create');
             Route::post('/store', [DoctorClinicRecordController::class, 'store'])->name('store');
+            Route::get('/{id}/print', [ClinicRecordController::class, 'print'])->name('print');
             Route::get('/{id}', [DoctorClinicRecordController::class, 'show'])->name('show');
         });
     });
@@ -152,6 +153,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [DoctorClinicRecordController::class, 'index'])->name('index');
             Route::get('/create', [DoctorClinicRecordController::class, 'create'])->name('create');
             Route::post('/store', [DoctorClinicRecordController::class, 'store'])->name('store');
+            Route::get('/{id}/print', [ClinicRecordController::class, 'print'])->name('print');
             Route::get('/{id}', [DoctorClinicRecordController::class, 'show'])->name('show');
         });
     });
@@ -238,5 +240,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/inventory/ledger', [AdminInventoryController::class, 'ledger'])->name('inventory.ledger');
         Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/consultation/export', [AdminReportController::class, 'exportConsultationExcel'])->name('reports.consultation.export');
+        Route::get('/reports/medicine-usage/export', [AdminReportController::class, 'exportMedicineUsageExcel'])->name('reports.medicine-usage.export');
     });
 });

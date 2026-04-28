@@ -87,7 +87,7 @@
 
             <section>
                 <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 uppercase mb-3">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Objective / Vital Signs
+                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Vitals
                 </h3>
                 <div class="grid grid-cols-4 gap-3 mb-3">
                     <div class="p-3 border rounded-lg text-center">
@@ -131,8 +131,14 @@
                         </p>
                     </div>
                 </div>
+            </section>
+
+            <section>
+                <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 uppercase mb-3">
+                    <span class="w-2 h-2 bg-cyan-500 rounded-full"></span> Objective Findings
+                </h3>
                 <div class="p-4 bg-white border border-dashed border-gray-200 rounded-xl text-slate-700 italic whitespace-pre-line">
-                    {{ $record->objective ?: 'No specific physical examination details provided.' }}
+                    {{ $record->objective ?: 'No specific objective findings provided.' }}
                 </div>
             </section>
 
@@ -147,7 +153,16 @@
 
             <section>
                 <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 uppercase mb-3">
-                    <span class="w-2 h-2 bg-green-500 rounded-full"></span> Medicines Given
+                    <span class="w-2 h-2 bg-violet-500 rounded-full"></span> Treatment Plan
+                </h3>
+                <div class="p-5 bg-white border border-gray-200 rounded-xl text-slate-700 leading-relaxed whitespace-pre-line">
+                    {{ $record->follow_up_recommendation ?: 'No treatment plan provided.' }}
+                </div>
+            </section>
+
+            <section>
+                <h3 class="flex items-center gap-2 text-sm font-black text-slate-800 uppercase mb-3">
+                    <span class="w-2 h-2 bg-green-500 rounded-full"></span> Medicines
                 </h3>
                 <div class="p-5 bg-white border border-gray-200 rounded-xl text-slate-700">
                     @if($record->medicines && $record->medicines->count() > 0)

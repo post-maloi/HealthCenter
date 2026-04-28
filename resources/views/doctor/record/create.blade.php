@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $roleNormalized = strtolower(trim((string) (auth()->user()->role ?? '')));
+    $isNurse = $roleNormalized === 'nurse';
+    $routePrefix = $isNurse ? 'nurse' : 'doctor';
+@endphp
 <div id="medicine-data" data-list='@json($allMedicines ?? [])' style="display: none;"></div>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
@@ -21,7 +26,7 @@
     @endif
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <form action="{{ route('doctor.record.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route($routePrefix . '.record.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
 
             <input type="hidden" name="patient_record_id" value="{{ $patient->id }}">
@@ -29,7 +34,7 @@
             <div class="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 uppercase">Individual Treatment Record</h2>
-                    <p class="text-sm text-gray-500 uppercase tracking-widest mt-1">Doctor Consultation</p>
+                    <p class="text-sm text-gray-500 uppercase tracking-widest mt-1">{{ $isNurse ? 'Nurse Consultation' : 'Doctor Consultation' }}</p>
                 </div>
                 <div class="text-right">
                     <label class="block text-xs font-bold text-gray-400 uppercase">Consultation Date</label>
@@ -157,13 +162,19 @@
                                 <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">S</span>
                                 <label class="text-xs font-bold text-gray-700 uppercase">Subjective Findings</label>
                             </div>
-                            <textarea rows="2" readonly class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-600 outline-none cursor-default">{{ $latest?->subjective }}</textarea>
+                            <textarea
+                                name="{{ $isNurse ? 'subjective' : '' }}"
+                                rows="2"
+                                {{ $isNurse ? '' : 'readonly' }}
+                                class="w-full px-4 py-3 rounded-xl {{ $isNurse ? 'bg-white border border-gray-200' : 'bg-gray-50 border border-gray-100 text-gray-600 cursor-default' }} text-sm outline-none"
+                                placeholder="{{ $isNurse ? 'Enter subjective findings...' : '' }}"
+                            >{{ old('subjective', $latest?->subjective) }}</textarea>
                         </div>
 
                         <div>
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">O</span>
-                                <label class="text-xs font-bold text-gray-700 uppercase">Objective / Vitals</label>
+                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">V</span>
+                                <label class="text-xs font-bold text-gray-700 uppercase">Vitals</label>
                             </div>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                 <div class="relative"><span class="absolute left-2 top-2 text-[10px] font-bold text-gray-400">T</span><input type="text" readonly value="{{ $latest?->temp }}" placeholder="°C" class="w-full pl-6 pr-2 py-2 bg-white border border-gray-100 rounded-lg text-xs outline-none cursor-default"></div>
@@ -177,7 +188,20 @@
                                     <input type="text" readonly value="{{ $latest?->bmi }}" placeholder="Auto" class="w-full pl-10 pr-2 py-2 border border-blue-100 bg-blue-50/50 rounded-lg text-xs font-bold text-blue-700 cursor-default">
                                 </div>
                             </div>
-                            <textarea rows="2" readonly placeholder="Physical Examination details..." class="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-600 outline-none cursor-default">{{ $latest?->objective }}</textarea>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">O</span>
+                                <label class="text-xs font-bold text-gray-700 uppercase">Objective Findings</label>
+                            </div>
+                            <textarea
+                                name="{{ $isNurse ? 'objective' : '' }}"
+                                rows="2"
+                                {{ $isNurse ? '' : 'readonly' }}
+                                placeholder="{{ $isNurse ? 'Enter objective findings...' : 'Physical Examination details...' }}"
+                                class="w-full px-4 py-3 rounded-xl {{ $isNurse ? 'bg-white border border-gray-200' : 'bg-gray-50 border border-gray-100 text-gray-600 cursor-default' }} text-sm outline-none"
+                            >{{ old('objective', $latest?->objective) }}</textarea>
                         </div>
 
                         <div>
@@ -185,27 +209,38 @@
                                 <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">A</span>
                                 <label class="text-xs font-bold text-gray-700 uppercase">Assessment / Diagnosis</label>
                             </div>
-                            <textarea name="diagnosis" rows="2" required placeholder="Medical assessment..." class="w-full px-4 py-3 rounded-xl border-2 border-blue-50 bg-blue-50/10 text-sm outline-none">{{ old('diagnosis') }}</textarea>
+                            <textarea
+                                name="{{ $isNurse ? '' : 'diagnosis' }}"
+                                rows="2"
+                                {{ $isNurse ? 'readonly' : 'required' }}
+                                placeholder="{{ $isNurse ? 'Only doctor can fill this out.' : 'Medical assessment...' }}"
+                                class="w-full px-4 py-3 rounded-xl border-2 border-blue-50 {{ $isNurse ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : 'bg-blue-50/10' }} text-sm outline-none"
+                            >{{ old('diagnosis', $isNurse ? 'For doctor assessment' : '') }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase mb-2">Patient Condition Update</label>
-                            <select name="condition_update" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50">
-                                <option value="" disabled {{ old('condition_update') ? '' : 'selected' }}>Select condition status...</option>
-                                <option value="recovered" {{ old('condition_update') === 'recovered' ? 'selected' : '' }}>Recovered</option>
-                                <option value="improving" {{ old('condition_update') === 'improving' ? 'selected' : '' }}>Improving</option>
-                                <option value="no_improvement" {{ old('condition_update') === 'no_improvement' ? 'selected' : '' }}>No Improvement</option>
-                                <option value="worsened" {{ old('condition_update') === 'worsened' ? 'selected' : '' }}>Worsened</option>
-                            </select>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">P</span>
+                                <label class="text-xs font-bold text-gray-700 uppercase">Treatment Plan</label>
+                            </div>
+                            <textarea
+                                name="{{ $isNurse ? '' : 'follow_up_recommendation' }}"
+                                rows="2"
+                                {{ $isNurse ? 'readonly' : '' }}
+                                placeholder="{{ $isNurse ? 'Only doctor can fill this out.' : 'Enter treatment plan...' }}"
+                                class="w-full px-4 py-3 rounded-xl border text-sm outline-none {{ $isNurse ? 'border-gray-100 bg-gray-50 text-gray-500 cursor-not-allowed' : 'border-gray-200 focus:ring-2 focus:ring-blue-100' }}"
+                            >{{ old('follow_up_recommendation') }}</textarea>
                         </div>
 
                         <div>
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center gap-2">
-                                    <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">P</span>
-                                    <label class="text-xs font-bold text-gray-700 uppercase">Plan / Medicines</label>
+                                    <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">M</span>
+                                    <label class="text-xs font-bold text-gray-700 uppercase">Medicines</label>
                                 </div>
-                                <button type="button" id="add-medicine-btn" class="text-blue-600 hover:text-blue-800 text-[10px] font-bold tracking-widest">+ ADD ITEM</button>
+                                @unless($isNurse)
+                                    <button type="button" id="add-medicine-btn" class="text-blue-600 hover:text-blue-800 text-[10px] font-bold tracking-widest">+ ADD ITEM</button>
+                                @endunless
                             </div>
                             <div id="medicine-rows-container" class="space-y-3"></div>
                             <div class="mt-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
@@ -215,14 +250,14 @@
                             <div class="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                                 <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Consulted By (Current User)</p>
                                 <p class="text-sm font-bold text-emerald-700 uppercase">
-                                    @if((auth()->user()->role ?? '') === 'nurse')
+                                    @if($roleNormalized === 'nurse')
                                         Nurse {{ trim((auth()->user()->first_name ?? '').' '.(auth()->user()->middle_name ?? '').' '.(auth()->user()->last_name ?? '')) }}
                                     @else
                                         Dr. {{ trim((auth()->user()->first_name ?? '').' '.(auth()->user()->middle_name ?? '').' '.(auth()->user()->last_name ?? '')) }}
                                     @endif
                                 </p>
                             </div>
-                            @if((auth()->user()->role ?? '') === 'nurse')
+                            @if($roleNormalized === 'nurse')
                             <div class="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
                                 <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Consulted by (Nurse)</p>
                                 <p class="text-sm font-bold text-blue-700 uppercase">
@@ -234,7 +269,7 @@
 
                         <div class="pt-6 flex gap-4">
                             <button type="submit" class="flex-grow bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 shadow-lg transition active:scale-[0.98]">Save Consultation</button>
-                            <a href="{{ route('doctor.record.index') }}" class="px-8 py-4 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</a>
+                            <a href="{{ route($routePrefix . '.record.index') }}" class="px-8 py-4 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200 transition">Cancel</a>
                         </div>
                     </div>
                 </div>
@@ -364,8 +399,10 @@
             $(this).closest('.medicine-row').remove();
         });
 
-        addBtn.addEventListener('click', createMedicineRow);
-        createMedicineRow();
+        if (addBtn) {
+            addBtn.addEventListener('click', createMedicineRow);
+            createMedicineRow();
+        }
     });
 </script>
 @endsection

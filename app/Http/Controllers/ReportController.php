@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ClinicRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 
@@ -162,13 +164,23 @@ class ReportController extends Controller
 
         $writer = new Writer();
         $writer->openToFile($tempPath);
+        $writer->addRow(Row::fromValues(['Patient Report']));
+        $writer->addRow(Row::fromValues([]));
         $writer->addRow(Row::fromValues($headers));
 
         foreach ($patients as $record) {
+            $consultationDate = $record->consultation_date
+                ? Carbon::parse($record->consultation_date)->format('M d, Y')
+                : '';
+            $birthday = $record->birthday
+                ? Carbon::parse($record->birthday)->format('M d, Y')
+                : '';
+            $patientName = trim($record->first_name . ' ' . $record->last_name);
+
             $writer->addRow(Row::fromValues([
-                $record->consultation_date,
-                trim($record->first_name . ' ' . $record->middle_name . ' ' . $record->last_name),
-                $record->birthday,
+                $consultationDate,
+                $patientName,
+                $birthday,
                 $record->age,
                 $record->gender,
                 $record->civil_status,
@@ -185,8 +197,27 @@ class ReportController extends Controller
     public function diagnosis(Request $request)
     {
         $search = $request->get('search');
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        $month = $request->get('month');
 
         $diagnosisReports = ClinicRecord::query()
+            // Remove redundant step-by-step duplicates, but keep different
+            // diagnosis/date rows for the same patient.
+            ->whereIn('id', function ($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('clinic_records')
+                    ->groupBy(
+                        'first_name',
+                        'last_name',
+                        'birthday',
+                        DB::raw('DATE(consultation_date)'),
+                        'diagnosis'
+                    );
+            })
+            ->whereNotNull('diagnosis')
+            ->where('diagnosis', '!=', '')
+            ->whereNotIn('diagnosis', self::DIAGNOSIS_PLACEHOLDERS)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('diagnosis', 'like', "%{$search}%")
@@ -194,20 +225,56 @@ class ReportController extends Controller
                         ->orWhere('last_name', 'like', "%{$search}%");
                 });
             })
+            ->when($month, function ($query) use ($month) {
+                try {
+                    $startOfMonth = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString();
+                    $endOfMonth = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
+                    $query->whereBetween(DB::raw('DATE(consultation_date)'), [$startOfMonth, $endOfMonth]);
+                } catch (\Throwable $e) {
+                    // Ignore invalid month format and proceed without month filter.
+                }
+            })
+            ->when($fromDate, function ($query) use ($fromDate) {
+                $query->whereDate('consultation_date', '>=', $fromDate);
+            })
+            ->when($toDate, function ($query) use ($toDate) {
+                $query->whereDate('consultation_date', '<=', $toDate);
+            })
             ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
         return view('reports.diagnosis', [
             'diagnosisReports' => $diagnosisReports,
             'search' => $search,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'month' => $month,
         ]);
     }
 
     public function exportDiagnosisExcel(Request $request)
     {
         $search = $request->get('search');
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        $month = $request->get('month');
 
         $records = ClinicRecord::with('medicines')
+            ->whereIn('id', function ($query) {
+                $query->selectRaw('MAX(id)')
+                    ->from('clinic_records')
+                    ->groupBy(
+                        'first_name',
+                        'last_name',
+                        'birthday',
+                        DB::raw('DATE(consultation_date)'),
+                        'diagnosis'
+                    );
+            })
+            ->whereNotNull('diagnosis')
+            ->where('diagnosis', '!=', '')
+            ->whereNotIn('diagnosis', self::DIAGNOSIS_PLACEHOLDERS)
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('diagnosis', 'like', "%{$search}%")
@@ -215,7 +282,23 @@ class ReportController extends Controller
                         ->orWhere('last_name', 'like', "%{$search}%");
                 });
             })
+            ->when($month, function ($query) use ($month) {
+                try {
+                    $startOfMonth = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString();
+                    $endOfMonth = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
+                    $query->whereBetween(DB::raw('DATE(consultation_date)'), [$startOfMonth, $endOfMonth]);
+                } catch (\Throwable $e) {
+                    // Ignore invalid month format and proceed without month filter.
+                }
+            })
+            ->when($fromDate, function ($query) use ($fromDate) {
+                $query->whereDate('consultation_date', '>=', $fromDate);
+            })
+            ->when($toDate, function ($query) use ($toDate) {
+                $query->whereDate('consultation_date', '<=', $toDate);
+            })
             ->orderBy('consultation_date', 'desc')
+            ->orderBy('id', 'desc')
             ->get();
 
         $headers = [
@@ -245,17 +328,26 @@ class ReportController extends Controller
 
         $writer = new Writer();
         $writer->openToFile($tempPath);
+        $writer->addRow(Row::fromValues(['Diagnosis Report']));
+        $writer->addRow(Row::fromValues([]));
         $writer->addRow(Row::fromValues($headers));
 
         foreach ($records as $record) {
             $medicines = $record->medicines->map(function ($medicine) {
                 return $medicine->name . ' (x' . $medicine->pivot->quantity . ')';
             })->implode(', ');
+            $consultationDate = $record->consultation_date
+                ? Carbon::parse($record->consultation_date)->format('M d, Y')
+                : '';
+            $birthday = $record->birthday
+                ? Carbon::parse($record->birthday)->format('M d, Y')
+                : '';
+            $patientName = trim($record->first_name . ' ' . $record->last_name);
 
             $writer->addRow(Row::fromValues([
-                $record->consultation_date,
-                trim($record->first_name . ' ' . $record->middle_name . ' ' . $record->last_name),
-                $record->birthday,
+                $consultationDate,
+                $patientName,
+                $birthday,
                 $record->age,
                 $record->gender,
                 $record->civil_status,

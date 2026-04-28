@@ -13,7 +13,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class DoctorClinicRecordController extends Controller
@@ -23,7 +22,7 @@ class DoctorClinicRecordController extends Controller
 
     private function currentRole(): string
     {
-        return (string) (Auth::user()->role ?? 'doctor');
+        return strtolower(trim((string) (Auth::user()->role ?? 'doctor')));
     }
 
     private function normalizeMedicineName(string $name): string
@@ -84,6 +83,57 @@ class DoctorClinicRecordController extends Controller
         });
     }
 
+    private function assignConsultant(array &$members, ?string $rawName, string $defaultRole = 'bhw'): void
+    {
+        $name = trim((string) $rawName);
+        if ($name === '') {
+            return;
+        }
+
+        $normalized = strtolower($name);
+        $role = $defaultRole;
+        if (str_starts_with($normalized, 'dr. ') || str_starts_with($normalized, 'dr ')) {
+            $role = 'doctor';
+            $name = trim(preg_replace('/^dr\.?\s+/i', '', $name) ?? $name);
+        } elseif (str_starts_with($normalized, 'nurse ')) {
+            $role = 'nurse';
+            $name = trim(preg_replace('/^nurse\s+/i', '', $name) ?? $name);
+        } elseif (str_starts_with($normalized, 'bhw ')) {
+            $role = 'bhw';
+            $name = trim(preg_replace('/^bhw\s+/i', '', $name) ?? $name);
+        }
+
+        if (!empty($members[$role])) {
+            return;
+        }
+
+        $members[$role] = match ($role) {
+            'doctor' => 'Dr. ' . $name,
+            'nurse' => 'Nurse ' . $name,
+            default => 'BHW ' . $name,
+        };
+    }
+
+    private function buildConsultationTeam(Collection $records): array
+    {
+        $members = [
+            'bhw' => null,
+            'nurse' => null,
+            'doctor' => null,
+        ];
+
+        foreach ($records->sortBy('id') as $record) {
+            $this->assignConsultant($members, $record->consulted_by, 'bhw');
+            $this->assignConsultant($members, $record->doctor_consulted_by, 'doctor');
+        }
+
+        return array_values(array_filter([
+            $members['bhw'],
+            $members['nurse'],
+            $members['doctor'],
+        ]));
+    }
+
     private function hasResolvedDiagnosis(?string $diagnosis): bool
     {
         $value = trim((string) $diagnosis);
@@ -92,6 +142,15 @@ class DoctorClinicRecordController extends Controller
         }
 
         return !in_array($value, [self::DOCTOR_PLACEHOLDER_DIAGNOSIS, self::NURSE_PLACEHOLDER_DIAGNOSIS], true);
+    }
+
+    private function isDoctorFinalizedRecord(ClinicRecord $record): bool
+    {
+        if (!$this->hasResolvedDiagnosis($record->diagnosis)) {
+            return false;
+        }
+
+        return str_starts_with(strtolower(trim((string) $record->doctor_consulted_by)), 'dr.');
     }
 
     private function isPendingDiagnosis(?string $diagnosis): bool
@@ -121,11 +180,6 @@ class DoctorClinicRecordController extends Controller
             'worsened' => 'Patient may require specialist referral.',
             default => 'Schedule follow-up consultation and monitor symptoms closely.',
         };
-    }
-
-    private function allowedConditionUpdateValues(): array
-    {
-        return ['recovered', 'improving', 'no_improvement', 'worsened'];
     }
 
     private function buildRecoveryMonitoring(): array
@@ -328,10 +382,11 @@ class DoctorClinicRecordController extends Controller
 
     public function create(Request $request)
     {
+        $routePrefix = $this->currentRole() === 'nurse' ? 'nurse' : 'doctor';
         $allMedicines = $this->getDispensableMedicinesForSelection();
         $patientRecordId = $request->query('patient_record_id');
         if (!$patientRecordId) {
-            return redirect()->route('doctor.record.index')->with('success', 'Select a patient first to add a new consultation.');
+            return redirect()->route($routePrefix . '.record.index')->with('success', 'Select a patient first to add a new consultation.');
         }
 
         $patient = ClinicRecord::findOrFail($patientRecordId);
@@ -370,18 +425,24 @@ class DoctorClinicRecordController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
+        $isNurse = $this->currentRole() === 'nurse';
+
+        $rules = [
             'patient_record_id' => 'required|exists:clinic_records,id',
             'consultation_date' => 'required|date',
-
-            // Doctor fills these (not auto-filled)
-            'diagnosis' => 'required|string',
-            'condition_update' => ['required', Rule::in($this->allowedConditionUpdateValues())],
-
-            // Not auto-filled; doctor uploads/attaches as needed
             'laboratory_images'   => 'nullable|array|max:5',
             'laboratory_images.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
-        ]);
+        ];
+
+        if ($isNurse) {
+            $rules['subjective'] = 'nullable|string';
+            $rules['objective'] = 'nullable|string';
+        } else {
+            $rules['diagnosis'] = 'required|string';
+            $rules['follow_up_recommendation'] = 'nullable|string';
+        }
+
+        $validated = $request->validate($rules);
 
         $patient = ClinicRecord::findOrFail($validated['patient_record_id']);
         $latest = ClinicRecord::where('first_name', $patient->first_name)
@@ -403,12 +464,14 @@ class DoctorClinicRecordController extends Controller
             'address_purok' => $patient->address_purok,
 
             'consultation_date' => $validated['consultation_date'],
-            'diagnosis' => $validated['diagnosis'],
-            'condition_update' => $validated['condition_update'],
-            'follow_up_recommendation' => $this->recommendationForStatus($validated['condition_update']),
+            'diagnosis' => $isNurse
+                ? self::NURSE_PLACEHOLDER_DIAGNOSIS
+                : $validated['diagnosis'],
+            'condition_update' => null,
+            'follow_up_recommendation' => $isNurse ? null : ($validated['follow_up_recommendation'] ?? null),
             // Doctor reviews these values, but they come from the latest BHW consultation.
-            'subjective' => $latest?->subjective,
-            'objective' => $latest?->objective,
+            'subjective' => $isNurse ? ($validated['subjective'] ?? null) : $latest?->subjective,
+            'objective' => $isNurse ? ($validated['objective'] ?? null) : $latest?->objective,
             'temp' => $latest?->temp,
             'bp' => $latest?->bp,
             'pr' => $latest?->pr,
@@ -434,7 +497,7 @@ class DoctorClinicRecordController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $payload) {
+        DB::transaction(function () use ($request, $payload, $isNurse) {
             $record = ClinicRecord::create($payload);
             $dispensedSummary = [];
 
@@ -454,7 +517,7 @@ class DoctorClinicRecordController extends Controller
                 }
             }
 
-            if ($request->has('medicines')) {
+            if (!$isNurse && $request->has('medicines')) {
                 $requestedByMedicineKey = [];
                 $requestedLabelByMedicineKey = [];
                 $medicineIds = collect($request->medicines)
@@ -553,26 +616,38 @@ class DoctorClinicRecordController extends Controller
             );
         });
 
-        return redirect()->route('doctor.record.index')->with('success', 'Record saved!');
+        $routePrefix = $this->currentRole() === 'nurse' ? 'nurse' : 'doctor';
+        return redirect()->route($routePrefix . '.record.index')->with('success', 'Record saved!');
     }
 
     public function show($id)
     {
         $record = ClinicRecord::with(['medicines', 'laboratoryFiles'])->findOrFail($id);
 
-        $history = ClinicRecord::with('laboratoryFiles')
+        $historyRecords = ClinicRecord::with('laboratoryFiles')
             ->where('first_name', $record->first_name)
             ->where('last_name', $record->last_name)
             ->where('birthday', $record->birthday)
-            ->orderBy('consultation_date', 'desc')
+            ->orderBy('consultation_date', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
-        $history = $this->attachDisplayVitals($history);
+        $historyRecords = $this->attachDisplayVitals($historyRecords);
+        $history = $historyRecords
+            ->filter(fn (ClinicRecord $item) => $this->isDoctorFinalizedRecord($item))
+            ->values();
+
+        $consultationDate = optional($record->consultation_date)->format('Y-m-d');
+        $consultationTeam = $this->buildConsultationTeam(
+            $historyRecords->filter(fn (ClinicRecord $item) => optional($item->consultation_date)->format('Y-m-d') === $consultationDate)
+        );
+
         $record = $this->attachDisplayVitals(collect([$record]))->first();
 
         return view('doctor.record.show', [
             'record' => $record,
             'history' => $history,
+            'consultationTeam' => $consultationTeam,
         ]);
     }
 

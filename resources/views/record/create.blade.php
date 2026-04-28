@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $role = auth()->user()->role ?? 'bhw';
+    $isNurse = $role === 'nurse';
+    $canEncodeFindings = $isNurse;
+@endphp
 {{-- Hidden data provider for JavaScript --}}
 <div id="medicine-data" data-list='@json($allMedicines ?? [])' style="display: none;"></div>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -191,14 +196,20 @@
                                 <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">S</span>
                                 <label class="text-xs font-bold text-gray-700 uppercase">Subjective Findings</label>
                             </div>
-                            <textarea name="subjective" rows="2" placeholder="Patient's complaints..." class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-100 outline-none">{{ old('subjective') }}</textarea>
+                            <textarea
+                                name="subjective"
+                                rows="2"
+                                placeholder="{{ $canEncodeFindings ? "Patient's complaints..." : 'Only nurse can fill this out.' }}"
+                                {{ $canEncodeFindings ? '' : 'readonly onclick=showNurseOnlyNotice(\'Subjective Findings\')' }}
+                                class="w-full px-4 py-3 rounded-xl border text-sm outline-none {{ $canEncodeFindings ? 'border-gray-200 focus:ring-2 focus:ring-blue-100' : 'border-gray-100 bg-gray-50 text-gray-500 cursor-not-allowed' }}"
+                            >{{ old('subjective') }}</textarea>
                         </div>
 
-                        {{-- O - Objective / Vital Signs --}}
+                        {{-- V - Vital Signs --}}
                         <div>
                             <div class="flex items-center gap-2 mb-2">
-                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">O</span>
-                                <label class="text-xs font-bold text-gray-700 uppercase">Objective / Vitals</label>
+                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">V</span>
+                                <label class="text-xs font-bold text-gray-700 uppercase">Vitals</label>
                             </div>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                 <div class="relative"><span class="absolute left-2 top-2 text-[10px] font-bold text-gray-400">T</span><input type="text" name="temp" value="{{ old('temp') }}" placeholder="°C" class="w-full pl-6 pr-2 py-2 border rounded-lg text-xs outline-none"></div>
@@ -212,7 +223,21 @@
                                     <input type="text" id="bmi_result" name="bmi" value="{{ old('bmi') }}" readonly placeholder="Auto" class="w-full pl-10 pr-2 py-2 border border-blue-100 bg-blue-50/50 rounded-lg text-xs font-bold text-blue-700">
                                 </div>
                             </div>
-                            <textarea name="objective" rows="2" placeholder="Physical Examination details..." class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-100 outline-none">{{ old('objective') }}</textarea>
+                        </div>
+
+                        {{-- O - Objective Findings --}}
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-blue-600 text-white w-6 h-6 flex items-center justify-center rounded font-bold text-xs">O</span>
+                                <label class="text-xs font-bold text-gray-700 uppercase">Objective Findings</label>
+                            </div>
+                            <textarea
+                                name="objective"
+                                rows="2"
+                                placeholder="{{ $canEncodeFindings ? 'Physical examination details...' : 'Only nurse can fill this out.' }}"
+                                {{ $canEncodeFindings ? '' : 'readonly onclick=showNurseOnlyNotice(\'Objective Findings\')' }}
+                                class="w-full px-4 py-3 rounded-xl border text-sm outline-none {{ $canEncodeFindings ? 'border-gray-200 focus:ring-2 focus:ring-blue-100' : 'border-gray-100 bg-gray-50 text-gray-500 cursor-not-allowed' }}"
+                            >{{ old('objective') }}</textarea>
                         </div>
 
                         {{-- A - Assessment --}}
@@ -397,6 +422,23 @@
         alert.id = 'doctor-only-alert';
         alert.className = 'fixed top-5 right-5 z-[9999] bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold';
         alert.textContent = `${sectionName} can only be filled out by a Doctor.`;
+        document.body.appendChild(alert);
+
+        setTimeout(() => {
+            alert.style.opacity = '0';
+            alert.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => alert.remove(), 300);
+        }, 2200);
+    }
+
+    function showNurseOnlyNotice(sectionName) {
+        const existing = document.getElementById('nurse-only-alert');
+        if (existing) existing.remove();
+
+        const alert = document.createElement('div');
+        alert.id = 'nurse-only-alert';
+        alert.className = 'fixed top-5 right-5 z-[9999] bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold';
+        alert.textContent = `${sectionName} can only be filled out by a Nurse.`;
         document.body.appendChild(alert);
 
         setTimeout(() => {

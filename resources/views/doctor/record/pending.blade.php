@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $roleNormalized = strtolower(trim((string) (auth()->user()->role ?? 'doctor')));
+    $routePrefix = $roleNormalized === 'nurse' ? 'nurse' : 'doctor';
+@endphp
 <style>
     .triage-row {
         transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
@@ -217,14 +221,14 @@
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="action-hub flex justify-end gap-2">
-                                <a href="{{ route('doctor.record.create', ['patient_record_id' => $record->id]) }}"
+                                <a href="{{ route($routePrefix . '.record.create', ['patient_record_id' => $record->id]) }}"
                                     class="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                                     title="Add new consultation for this patient">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
                                     </svg>
                                 </a>
-                                <a href="{{ route('doctor.record.show', $record->id) }}"
+                                <a href="{{ route($routePrefix . '.record.show', $record->id) }}"
                                     class="flex items-center justify-center w-9 h-9 rounded-xl bg-gray-50 text-gray-400 hover:bg-gray-800 hover:text-white transition-all shadow-sm"
                                     title="View patient history">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

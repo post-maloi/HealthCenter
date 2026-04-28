@@ -89,7 +89,7 @@ class User extends Authenticatable
 
     public function getIsDoctorAvailableAttribute(): bool
     {
-        if ($this->role !== 'doctor') {
+        if (strtolower(trim((string) $this->role)) !== 'doctor') {
             return false;
         }
 
@@ -97,6 +97,7 @@ class User extends Authenticatable
             return (bool) $this->doctor_availability_override;
         }
 
-        return now()->isWednesday();
+        // Doctors are available any day by default.
+        return true;
     }
 }

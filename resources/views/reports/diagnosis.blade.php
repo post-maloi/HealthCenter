@@ -7,7 +7,7 @@
             <h1 class="text-3xl font-bold text-gray-800">Diagnosis Report</h1>
             <p class="text-gray-500 text-sm mt-1">All consultation diagnosis records</p>
         </div>
-        <a href="{{ route('reports.diagnosis.export', ['search' => $search]) }}"
+        <a href="{{ route('reports.diagnosis.export', ['search' => $search, 'from_date' => $fromDate ?? null, 'to_date' => $toDate ?? null, 'month' => $month ?? null]) }}"
             class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition">
             Export Excel
         </a>
@@ -15,14 +15,33 @@
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="p-4 border-b border-gray-100">
-            <form method="GET" action="{{ route('reports.diagnosis') }}" class="flex gap-3">
+            <form method="GET" action="{{ route('reports.diagnosis') }}" class="flex flex-wrap gap-3 items-end">
                 <input type="text" name="search" value="{{ $search }}"
                     placeholder="Search diagnosis or patient..."
-                    class="w-full md:w-96 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    class="w-full md:w-80 px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">From</label>
+                    <input type="date" name="from_date" value="{{ $fromDate ?? '' }}"
+                        class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">To</label>
+                    <input type="date" name="to_date" value="{{ $toDate ?? '' }}"
+                        class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Month</label>
+                    <input type="month" name="month" value="{{ $month ?? '' }}"
+                        class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
                 <button type="submit"
                     class="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition">
                     Search
                 </button>
+                <a href="{{ route('reports.diagnosis') }}"
+                    class="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition">
+                    Clear
+                </a>
             </form>
         </div>
 

@@ -22,17 +22,9 @@
                 <p class="text-sm text-slate-500">{{ $clinicAddress }}</p>
             </div>
         </div>
-        <div class="flex items-start gap-6">
-            <div class="text-right">
-                <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Today</p>
-                <p class="text-2xl font-black text-slate-700">{{ now()->format('F d, Y') }}</p>
-            </div>
-            <button type="button" class="relative rounded-xl border border-slate-200 p-2.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.389 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                </svg>
-                <span class="absolute -top-1 -right-1 h-4 min-w-4 rounded-full bg-rose-500 px-1 text-[10px] leading-4 font-bold text-white">3</span>
-            </button>
+        <div class="text-right">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Today</p>
+            <p class="text-2xl font-black text-slate-700">{{ now()->format('F d, Y') }}</p>
         </div>
     </div>
 

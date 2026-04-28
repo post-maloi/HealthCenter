@@ -27,7 +27,10 @@ class EnsureRole
             return $next($request);
         }
 
-        if (!in_array((string) $user->role, $roles, true)) {
+        $currentRole = strtolower(trim((string) ($user->role ?? '')));
+        $allowedRoles = array_map(fn (string $role) => strtolower(trim($role)), $roles);
+
+        if (!in_array($currentRole, $allowedRoles, true)) {
             abort(403);
         }
 

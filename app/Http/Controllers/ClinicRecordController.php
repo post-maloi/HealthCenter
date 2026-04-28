@@ -94,6 +94,76 @@ class ClinicRecordController extends Controller
         });
     }
 
+    private function hasResolvedDiagnosis(?string $diagnosis): bool
+    {
+        $value = trim((string) $diagnosis);
+        if ($value === '') {
+            return false;
+        }
+
+        return !in_array($value, [self::DOCTOR_PLACEHOLDER_DIAGNOSIS, 'For doctor assessment'], true);
+    }
+
+    private function isDoctorFinalizedRecord(ClinicRecord $record): bool
+    {
+        if (!$this->hasResolvedDiagnosis($record->diagnosis)) {
+            return false;
+        }
+
+        return str_starts_with(strtolower(trim((string) $record->doctor_consulted_by)), 'dr.');
+    }
+
+    private function assignConsultant(array &$members, ?string $rawName, string $defaultRole = 'bhw'): void
+    {
+        $name = trim((string) $rawName);
+        if ($name === '') {
+            return;
+        }
+
+        $normalized = strtolower($name);
+        $role = $defaultRole;
+        if (str_starts_with($normalized, 'dr. ') || str_starts_with($normalized, 'dr ')) {
+            $role = 'doctor';
+            $name = trim(preg_replace('/^dr\.?\s+/i', '', $name) ?? $name);
+        } elseif (str_starts_with($normalized, 'nurse ')) {
+            $role = 'nurse';
+            $name = trim(preg_replace('/^nurse\s+/i', '', $name) ?? $name);
+        } elseif (str_starts_with($normalized, 'bhw ')) {
+            $role = 'bhw';
+            $name = trim(preg_replace('/^bhw\s+/i', '', $name) ?? $name);
+        }
+
+        if (!empty($members[$role])) {
+            return;
+        }
+
+        $members[$role] = match ($role) {
+            'doctor' => 'Dr. ' . $name,
+            'nurse' => 'Nurse ' . $name,
+            default => 'BHW ' . $name,
+        };
+    }
+
+    private function buildConsultationTeam(Collection $records): array
+    {
+        $members = [
+            'bhw' => null,
+            'nurse' => null,
+            'doctor' => null,
+        ];
+
+        foreach ($records->sortBy('id') as $record) {
+            $this->assignConsultant($members, $record->consulted_by, 'bhw');
+            $this->assignConsultant($members, $record->doctor_consulted_by, 'doctor');
+        }
+
+        return array_values(array_filter([
+            $members['bhw'],
+            $members['nurse'],
+            $members['doctor'],
+        ]));
+    }
+
     public function index(Request $request)
     {
         $search = $request->get('search');
@@ -193,7 +263,12 @@ class ClinicRecordController extends Controller
         // BHW can only create patient + symptoms + queue; diagnosis/medications/lab are doctor-only.
         // Keep captured vitals so they remain visible in all history views.
         $validated['diagnosis'] = self::DOCTOR_PLACEHOLDER_DIAGNOSIS;
-        $validated['objective'] = $this->buildQueueLabel($validated['objective'] ?? null);
+        if ($role === 'bhw') {
+            $validated['subjective'] = null;
+            $validated['objective'] = $this->buildQueueLabel();
+        } else {
+            $validated['objective'] = $this->buildQueueLabel($validated['objective'] ?? null);
+        }
 
         DB::transaction(function () use ($request, $validated) {
             $record = ClinicRecord::create($validated);
@@ -214,19 +289,30 @@ class ClinicRecordController extends Controller
     {
         $record = ClinicRecord::with(['medicines', 'laboratoryFiles'])->findOrFail($id);
 
-        $history = ClinicRecord::with('laboratoryFiles')
+        $historyRecords = ClinicRecord::with('laboratoryFiles')
             ->where('first_name', $record->first_name)
             ->where('last_name', $record->last_name)
             ->where('birthday', $record->birthday)
-            ->orderBy('consultation_date', 'desc')
+            ->orderBy('consultation_date', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
-        $history = $this->attachDisplayVitals($history);
+        $historyRecords = $this->attachDisplayVitals($historyRecords);
+        $history = $historyRecords
+            ->filter(fn (ClinicRecord $item) => $this->isDoctorFinalizedRecord($item))
+            ->values();
+
+        $consultationDate = optional($record->consultation_date)->format('Y-m-d');
+        $consultationTeam = $this->buildConsultationTeam(
+            $historyRecords->filter(fn (ClinicRecord $item) => optional($item->consultation_date)->format('Y-m-d') === $consultationDate)
+        );
+
         $record = $this->attachDisplayVitals(collect([$record]))->first();
 
         return view('record.show', [
             'record' => $record,
-            'history' => $history
+            'history' => $history,
+            'consultationTeam' => $consultationTeam,
         ]);
     }
 
@@ -313,8 +399,6 @@ class ClinicRecordController extends Controller
                 'weight'            => 'nullable|numeric',
                 'height'            => 'nullable|numeric',
                 'bmi'               => 'nullable|string',
-                'subjective'        => 'nullable|string',
-                'objective'         => 'nullable|string',
             ]);
 
             $record->update([
@@ -323,6 +407,9 @@ class ClinicRecordController extends Controller
                 // Preserve doctor/nurse diagnosis and dispensed medicines.
                 'diagnosis' => $record->diagnosis,
                 'medicines_given' => $record->medicines_given,
+                // BHW cannot encode subjective/objective findings.
+                'subjective' => $record->subjective,
+                'objective' => $record->objective,
             ]);
 
             ActivityLogger::log(

@@ -29,6 +29,11 @@
                         'stock_out' => 'bg-blue-100 text-blue-700',
                         default => 'bg-slate-100 text-slate-700',
                     };
+                    $consultationId = null;
+                    if ($log->transaction_type === 'stock_out' && preg_match('/Dispensed for consultation #(\d+)/i', (string) $log->reference, $matches)) {
+                        $consultationId = (int) $matches[1];
+                    }
+                    $patientName = $consultationId ? ($consultationNames[$consultationId] ?? null) : null;
                 @endphp
                 <div class="rounded-xl border border-gray-100 p-4 bg-gray-50/40">
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
@@ -46,11 +51,18 @@
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-gray-400 uppercase">Date/Time</p>
-                            <p class="font-semibold text-slate-800">{{ $log->created_at->format('M d, Y h:i A') }}</p>
+                            <p class="font-semibold text-slate-800 inventory-log-time"
+                               data-timestamp="{{ $log->created_at->toIso8601String() }}">
+                                {{ $log->created_at->format('M d, Y h:i A') }}
+                            </p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold text-gray-400 uppercase">Action Type</p>
                             <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold {{ $actionClass }}">{{ $actionLabel }}</span>
+                            @if($patientName)
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mt-2">Patient</p>
+                                <p class="font-semibold text-slate-800">{{ $patientName }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -63,3 +75,34 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const nodes = Array.from(document.querySelectorAll('.inventory-log-time'));
+        if (!nodes.length) return;
+
+        const formatter = new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+        });
+
+        const renderTimes = () => {
+            nodes.forEach((node) => {
+                const iso = node.getAttribute('data-timestamp');
+                if (!iso) return;
+                const date = new Date(iso);
+                if (Number.isNaN(date.getTime())) return;
+                node.textContent = formatter.format(date);
+            });
+        };
+
+        renderTimes();
+        setInterval(renderTimes, 1000);
+    });
+</script>
+@endpush

@@ -152,7 +152,7 @@
             </div>
             
             @php
-                $role = auth()->check() ? strtolower((string) (auth()->user()->role ?? 'bhw')) : 'guest';
+                $role = auth()->check() ? strtolower(trim((string) (auth()->user()->role ?? 'bhw'))) : 'guest';
                 $isDoctor = $role === 'doctor';
                 $isNurse = $role === 'nurse';
                 $isBhw = $role === 'bhw';
@@ -298,12 +298,6 @@
         </aside>
 
         <main class="flex-1 p-10 overflow-y-auto relative bg-slate-50">
-            <div class="mb-4">
-                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold {{ $doctorAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                    <span class="w-2 h-2 rounded-full {{ $doctorAvailable ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
-                    {{ $doctorAvailable ? 'Doctor Available' : 'Doctor Not Available' }}
-                </div>
-            </div>
             @if(session('success'))
                 <div id="alert-msg" class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 shadow-sm rounded-r-lg flex justify-between items-center animate-fade-in-down">
                     <span>{{ session('success') }}</span>

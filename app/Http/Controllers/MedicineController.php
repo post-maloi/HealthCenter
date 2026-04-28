@@ -150,9 +150,32 @@ class MedicineController extends Controller
             ->latest()
             ->get();
 
+        $consultationIds = $inventoryLogs
+            ->pluck('reference')
+            ->filter()
+            ->map(function (string $reference) {
+                if (preg_match('/Dispensed for consultation #(\d+)/i', $reference, $matches)) {
+                    return (int) $matches[1];
+                }
+
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        $consultationNames = \App\Models\ClinicRecord::query()
+            ->whereIn('id', $consultationIds)
+            ->get()
+            ->mapWithKeys(function (\App\Models\ClinicRecord $record) {
+                $fullName = trim($record->first_name . ' ' . ($record->middle_name ? $record->middle_name . ' ' : '') . $record->last_name);
+                return [$record->id => $fullName];
+            });
+
         return view('medicines.edit', [
             'medicine' => $medicine,
             'inventoryLogs' => $inventoryLogs,
+            'consultationNames' => $consultationNames,
         ]);
     }
 

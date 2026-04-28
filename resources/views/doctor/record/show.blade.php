@@ -3,21 +3,8 @@
 @section('content')
 @php
     $hasValue = fn ($value) => !is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A';
-    $conditionStatus = $record->condition_update ?: 'monitoring';
-    $conditionLabel = match($conditionStatus) {
-        'recovered' => 'Recovered',
-        'improving' => 'Improving',
-        'no_improvement' => 'No Improvement',
-        'worsened' => 'Worsened',
-        default => 'Monitoring',
-    };
-    $conditionClass = match($conditionStatus) {
-        'recovered' => 'bg-emerald-100 text-emerald-700',
-        'improving' => 'bg-yellow-100 text-yellow-700',
-        'no_improvement' => 'bg-orange-100 text-orange-700',
-        'worsened' => 'bg-red-100 text-red-700',
-        default => 'bg-slate-100 text-slate-700',
-    };
+    $roleNormalized = strtolower(trim((string) (auth()->user()->role ?? 'doctor')));
+    $routePrefix = $roleNormalized === 'nurse' ? 'nurse' : 'doctor';
 @endphp
 <style>
     @media print {
@@ -41,8 +28,11 @@
             <p class="text-gray-500 text-sm">Date: {{ \Carbon\Carbon::parse($record->consultation_date)->format('M d, Y') }}</p>
         </div>
         <div class="flex gap-2">
-            <a href="{{ route('doctor.record.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">
+            <a href="{{ route($routePrefix . '.record.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition">
                 ← Back
+            </a>
+            <a href="{{ route($routePrefix . '.record.print', $record->id) }}" target="_blank" class="px-4 py-2 bg-[#2D8A80] text-white rounded-xl font-bold hover:bg-[#246e66] transition shadow-lg shadow-teal-100">
+                Print Record
             </a>
         </div>
     </div>
@@ -79,12 +69,12 @@
                 </div>
             </div>
 
-            @if(isset($history) && $history->count() > 1)
+            @if(isset($history) && $history->count() > 0)
             <div class="bg-gray-50 rounded-[2rem] p-6 no-print">
-                <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Visit History</h2>
+                <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">History</h2>
                 <div class="space-y-3">
                     @foreach($history as $visit)
-                        <a href="{{ route('doctor.record.show', $visit->id) }}" class="block p-3 rounded-xl border {{ $visit->id == $record->id ? 'bg-white border-[#2D8A80] shadow-sm' : 'border-transparent hover:bg-white' }} transition">
+                        <a href="{{ route($routePrefix . '.record.show', $visit->id) }}" class="block p-3 rounded-xl border {{ $visit->id == $record->id ? 'bg-white border-[#2D8A80] shadow-sm' : 'border-transparent hover:bg-white' }} transition">
                             <div class="flex items-start gap-3">
                                 @php
                                     $thumb = $visit->laboratoryFiles->first();
@@ -126,39 +116,6 @@
             </div>
             @endif
 
-            @if(isset($history) && $history->count() > 0)
-            <div class="bg-white border border-gray-100 rounded-[2rem] p-6 no-print">
-                <h2 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Recovery Timeline</h2>
-                <div class="space-y-3">
-                    @foreach($history->sortBy('consultation_date')->values() as $visit)
-                        @php
-                            $status = $visit->condition_update ?: 'monitoring';
-                            $statusText = match($status) {
-                                'recovered' => 'Recovered',
-                                'improving' => 'Improving',
-                                'no_improvement' => 'No Improvement',
-                                'worsened' => 'Worsened',
-                                default => 'Monitoring',
-                            };
-                            $statusClass = match($status) {
-                                'recovered' => 'bg-emerald-100 text-emerald-700',
-                                'improving' => 'bg-yellow-100 text-yellow-700',
-                                'no_improvement' => 'bg-orange-100 text-orange-700',
-                                'worsened' => 'bg-red-100 text-red-700',
-                                default => 'bg-slate-100 text-slate-700',
-                            };
-                        @endphp
-                        <div class="flex items-start justify-between gap-2 p-3 rounded-xl border border-gray-100">
-                            <div>
-                                <p class="text-[11px] font-black text-gray-500 uppercase">{{ \Carbon\Carbon::parse($visit->consultation_date)->format('M d, Y') }}</p>
-                                <p class="text-sm font-semibold text-slate-700">{{ $visit->diagnosis }}</p>
-                            </div>
-                            <span class="px-2 py-1 rounded-full text-[10px] font-bold {{ $statusClass }}">{{ $statusText }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
         </div>
 
         <div class="md:col-span-2 space-y-6 print-full-width">
@@ -173,7 +130,7 @@
             <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
                 <div class="flex items-center gap-2 mb-6">
                     <span class="w-3 h-3 bg-blue-500 rounded-full"></span>
-                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Objective / Vital Signs</h2>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Vitals</h2>
                 </div>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -220,9 +177,15 @@
                     </div>
                 </div>
 
-                <div class="mt-6 p-4 border border-dashed border-gray-200 rounded-2xl">
-                    <p class="text-[10px] font-black text-gray-300 uppercase mb-2">Physical Examination Details</p>
-                    <p class="text-gray-600 italic text-sm whitespace-pre-line">{{ $record->objective ?: 'No specific physical examination details provided.' }}</p>
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-cyan-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Objective Findings</h2>
+                </div>
+                <div class="p-4 border border-dashed border-gray-200 rounded-2xl">
+                    <p class="text-gray-600 italic text-sm whitespace-pre-line">{{ $record->objective ?: 'No specific objective findings provided.' }}</p>
                 </div>
             </div>
 
@@ -231,18 +194,19 @@
                     <span class="w-3 h-3 bg-red-500 rounded-full"></span>
                     <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Assessment / Diagnosis</h2>
                 </div>
-                <div class="mb-3">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold {{ $conditionClass }}">{{ $conditionLabel }}</span>
-                </div>
                 <div class="p-6 bg-red-50 rounded-3xl border border-red-100">
                     <p class="text-lg font-bold text-gray-800">{{ $record->diagnosis }}</p>
                 </div>
-                @if(!empty($record->follow_up_recommendation))
-                    <div class="mt-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
-                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Follow-up Recommendation</p>
-                        <p class="text-sm text-slate-700 mt-1">{{ $record->follow_up_recommendation }}</p>
-                    </div>
-                @endif
+            </div>
+
+            <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="w-3 h-3 bg-violet-500 rounded-full"></span>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Treatment Plan</h2>
+                </div>
+                <div class="p-4 bg-violet-50 rounded-2xl border border-violet-100">
+                    <p class="text-sm text-gray-700 whitespace-pre-line">{{ $record->follow_up_recommendation ?: 'No treatment plan provided.' }}</p>
+                </div>
             </div>
 
             <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
@@ -285,7 +249,7 @@
             <div class="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
                 <div class="flex items-center gap-2 mb-4">
                     <span class="w-3 h-3 bg-green-500 rounded-full"></span>
-                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Plan / Prescribed Medicines</h2>
+                    <h2 class="text-sm font-black text-gray-800 uppercase tracking-widest">Medicines</h2>
                 </div>
                 
                 @if($record->medicines && $record->medicines->count() > 0)
@@ -309,15 +273,36 @@
                     </div>
                 @endif
 
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="p-3 bg-gray-50 border border-gray-100 rounded-xl">
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Previous Consulted By</p>
-                        <p class="text-sm font-bold text-gray-700 uppercase">{{ $record->consulted_by ?: '—' }}</p>
-                    </div>
-                    <div class="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                        <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Current Consulted By</p>
-                        <p class="text-sm font-bold text-blue-700 uppercase">{{ $record->doctor_consulted_by ?: ($record->consulted_by ?: '—') }}</p>
-                    </div>
+                <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2">Consultation Team</p>
+                    @if(!empty($consultationTeam ?? []))
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach(($consultationTeam ?? []) as $member)
+                                @php
+                                    $memberValue = trim((string) $member);
+                                    $memberLower = strtolower($memberValue);
+                                    $roleLabel = str_starts_with($memberLower, 'dr.') ? 'Doctor Consulted By' : (str_starts_with($memberLower, 'nurse') ? 'Nurse Consulted By' : 'BHW Consulted By');
+                                    $cardClass = str_starts_with($memberLower, 'dr.')
+                                        ? 'bg-green-50 border-green-100'
+                                        : (str_starts_with($memberLower, 'nurse')
+                                            ? 'bg-blue-50 border-blue-100'
+                                            : 'bg-gray-50 border-gray-100');
+                                    $labelClass = str_starts_with($memberLower, 'dr.')
+                                        ? 'text-green-400'
+                                        : (str_starts_with($memberLower, 'nurse') ? 'text-blue-400' : 'text-gray-400');
+                                    $valueClass = str_starts_with($memberLower, 'dr.')
+                                        ? 'text-green-700'
+                                        : (str_starts_with($memberLower, 'nurse') ? 'text-blue-700' : 'text-gray-700');
+                                @endphp
+                                <div class="p-3 border rounded-xl {{ $cardClass }}">
+                                    <p class="text-[10px] font-black uppercase tracking-widest mb-1 {{ $labelClass }}">{{ $roleLabel }}</p>
+                                    <p class="text-sm font-bold uppercase {{ $valueClass }}">{{ $memberValue }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-sm font-bold text-blue-700 uppercase">—</p>
+                    @endif
                 </div>
             </div>
         </div>
