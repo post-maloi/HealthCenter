@@ -54,6 +54,48 @@
                     >
                 </div>
 
+                <div class="pt-2 border-t border-slate-100">
+                    <p class="text-sm font-bold text-slate-700 mb-3">Print Header Template</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Header Line 1</label>
+                            <input
+                                name="print_header_line_1"
+                                value="{{ old('print_header_line_1', $settings['print_header_line_1'] ?? 'Republic of the Philippines') }}"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                placeholder="Republic of the Philippines"
+                            >
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Header Line 2</label>
+                            <input
+                                name="print_header_line_2"
+                                value="{{ old('print_header_line_2', $settings['print_header_line_2'] ?? 'Office of the City Health') }}"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                placeholder="Office of the City Health"
+                            >
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Header Line 3</label>
+                            <input
+                                name="print_header_line_3"
+                                value="{{ old('print_header_line_3', $settings['print_header_line_3'] ?? 'Dumaguete City') }}"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                placeholder="Dumaguete City"
+                            >
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Document Title</label>
+                            <input
+                                name="print_header_title"
+                                value="{{ old('print_header_title', $settings['print_header_title'] ?? 'Individual Treatment Record') }}"
+                                class="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                placeholder="Individual Treatment Record"
+                            >
+                        </div>
+                    </div>
+                </div>
+
                 <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                     <input type="checkbox" name="consultation_requires_doctor" value="1" @checked(old('consultation_requires_doctor', ($settings['consultation_requires_doctor'] ?? '1') === '1'))>
                     <span class="text-sm font-medium text-slate-700">Consultation requires doctor</span>

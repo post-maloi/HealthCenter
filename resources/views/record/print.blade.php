@@ -60,6 +60,11 @@
                 padding-top: 0.15rem !important;
                 padding-bottom: 0 !important;
             }
+
+            .print-template-header {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
         }
         /* Ensure background colors show in PDF */
         .print-bg { 
@@ -73,14 +78,18 @@
         $hasValue = fn ($value) => !is_null($value) && trim((string) $value) !== '' && strtoupper(trim((string) $value)) !== 'N/A';
     @endphp
     <div class="max-w-4xl mx-auto border border-gray-300 rounded-xl overflow-hidden">
-        
-        {{-- Header --}}
-        <div class="p-8 border-b border-gray-200 flex justify-between items-start">
+
+        <div class="p-8 pb-4">
+            @include('record._official-print-header', ['printHeader' => $printHeader ?? []])
+        </div>
+
+        {{-- Patient Header --}}
+        <div class="px-8 py-5 border-t border-b border-gray-200 flex justify-between items-start">
             <div>
-                <h2 class="text-3xl font-extrabold text-slate-800 uppercase tracking-tight">
+                <h2 class="text-2xl font-extrabold text-slate-800 uppercase tracking-tight">
                     {{ $record->first_name }} {{ $record->middle_name }} {{ $record->last_name }}
                 </h2>
-                <p class="text-blue-600 font-bold mt-1">Patient Clinical File</p>
+                <p class="text-blue-600 font-bold mt-1 uppercase tracking-wide text-xs">Patient Clinical File</p>
             </div>
             <div class="text-right">
                 <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Consultation</span>
