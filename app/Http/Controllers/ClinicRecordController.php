@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\ClinicRecord; 
 use App\Models\Medicine;
+use App\Models\Setting;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -327,9 +328,17 @@ class ClinicRecordController extends Controller
     public function print($id)
     {
         $record = ClinicRecord::with('medicines')->findOrFail($id);
+        $printHeader = [
+            'line_1' => Setting::getValue('print_header_line_1', 'Republic of the Philippines'),
+            'line_2' => Setting::getValue('print_header_line_2', 'Office of the City Health'),
+            'line_3' => Setting::getValue('print_header_line_3', 'Dumaguete City'),
+            'title' => Setting::getValue('print_header_title', 'Individual Treatment Record'),
+            'logo_path' => Setting::getValue('clinic_logo'),
+        ];
 
         return view('record.print', [
             'record' => $record,
+            'printHeader' => $printHeader,
         ]);
     }
 

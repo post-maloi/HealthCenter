@@ -24,6 +24,10 @@ class SettingsController extends Controller
             'clinic_address' => 'nullable|string|max:500',
             'queue_behavior' => 'nullable|string|max:255',
             'consultation_requires_doctor' => 'nullable|boolean',
+            'print_header_line_1' => 'nullable|string|max:255',
+            'print_header_line_2' => 'nullable|string|max:255',
+            'print_header_line_3' => 'nullable|string|max:255',
+            'print_header_title' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
         ]);
 
@@ -36,6 +40,10 @@ class SettingsController extends Controller
         Setting::setValue('clinic_address', $validated['clinic_address'] ?? '');
         Setting::setValue('queue_behavior', $validated['queue_behavior'] ?? '');
         Setting::setValue('consultation_requires_doctor', $request->boolean('consultation_requires_doctor') ? '1' : '0');
+        Setting::setValue('print_header_line_1', $validated['print_header_line_1'] ?? 'Republic of the Philippines');
+        Setting::setValue('print_header_line_2', $validated['print_header_line_2'] ?? 'Office of the City Health');
+        Setting::setValue('print_header_line_3', $validated['print_header_line_3'] ?? 'Dumaguete City');
+        Setting::setValue('print_header_title', $validated['print_header_title'] ?? 'Individual Treatment Record');
 
         ActivityLogger::log('settings_updated', 'System settings updated', null, $request);
 
